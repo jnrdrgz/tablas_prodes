@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tournament {
+  id             Int              @id @default(autoincrement())
+  description    String
+  settings       Json?
+  subscribedToId Int?
+  subscribedTo   Tournament?      @relation("TournamentSubscription", fields: [subscribedToId], references: [id])
+  subscribers    Tournament[]     @relation("TournamentSubscription")
+  gameweeks      Gameweek[]
+  whatsappInputs WhatsappInput[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model Gameweek {
+  id           Int        @id @default(autoincrement())
+  description  String
+  tournamentId Int
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  matches      Match[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Match {
+  id          Int          @id @default(autoincrement())
+  gameweekId  Int
+  gameweek    Gameweek     @relation(fields: [gameweekId], references: [id], onDelete: Cascade)
+  description String
+  result      String?
+  predictions Prediction[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Prediction {
+  id        Int      @id @default(autoincrement())
+  matchId   Int
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  predictor String
+  result    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([matchId, predictor])
+}
+
+model Mapping {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
+
+model WhatsappInput {
+  id           Int        @id @default(autoincrement())
+  tournamentId Int
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  gameweekId   Int?
+  rawText      String
+  createdAt    DateTime   @default(now())
+}

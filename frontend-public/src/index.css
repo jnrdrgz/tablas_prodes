@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #1a1a2e;
+  color: #eee;
+}
+
+.btn {
+  @apply px-4 py-2 rounded font-medium transition-colors;
+}
+
+.btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white;
+}
+
+.btn-secondary {
+  @apply bg-gray-600 hover:bg-gray-700 text-white;
+}
+
+.btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white;
+}
+
+.btn-success {
+  @apply bg-green-600 hover:bg-green-700 text-white;
+}
+
+.input {
+  @apply w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded focus:outline-none focus:border-blue-500;
+}
+
+.textarea {
+  @apply w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded focus:outline-none focus:border-blue-500 font-mono text-sm;
+}
+
+.card {
+  @apply bg-gray-800 rounded-lg p-4 shadow-lg;
+}
+
+.table-dark {
+  @apply w-full text-sm;
+}
+
+.table-dark th,
+.table-dark td {
+  @apply px-2 py-1 border border-gray-700 text-center;
+}
+
+.table-dark th {
+  @apply bg-gray-700 font-bold;
+}
+
+.result-exact {
+  @apply bg-green-700;
+}
+
+.result-winner {
+  @apply bg-yellow-600;
+}
+
+.result-wrong {
+  @apply bg-transparent;
+}
+
+.result-skip {
+  @apply bg-gray-600 text-gray-400;
+}
