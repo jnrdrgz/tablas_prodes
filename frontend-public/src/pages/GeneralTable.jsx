@@ -32,7 +32,7 @@ export default function GeneralTable() {
 
       {!table || table.length === 0 ? (
         <div className="card text-center py-8">
-          <p className="text-gray-400">No hay datos todavía</p>
+          <p className="text-gray-400">No hay datos todavia</p>
         </div>
       ) : (
         <div className="card">
