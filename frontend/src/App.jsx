@@ -5,6 +5,7 @@ import Tournament from './pages/Tournament'
 import Gameweek from './pages/Gameweek'
 import Debug from './pages/Debug'
 import WhatsappInputs from './pages/WhatsappInputs'
+import GeneralTable from './pages/GeneralTable'
 
 function App() {
   return (
@@ -16,6 +17,9 @@ function App() {
           </Link>
           <Link to="/tournaments" className="text-gray-300 hover:text-white">
             Torneos
+          </Link>
+          <Link to="/general" className="text-gray-300 hover:text-white">
+            Tabla General
           </Link>
           <Link to="/inputs" className="text-gray-300 hover:text-white">
             Historial
@@ -31,6 +35,7 @@ function App() {
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/tournament/:id" element={<Tournament />} />
           <Route path="/gameweek/:id" element={<Gameweek />} />
+          <Route path="/general" element={<GeneralTable />} />
           <Route path="/debug" element={<Debug />} />
           <Route path="/inputs" element={<WhatsappInputs />} />
         </Routes>

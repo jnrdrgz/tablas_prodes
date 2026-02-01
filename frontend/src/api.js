@@ -76,6 +76,9 @@ export const createMapping = (key, value) => request('/mappings', {
 })
 export const deleteMapping = (id) => request(`/mappings/${id}`, { method: 'DELETE' })
 
+// General Table
+export const getGeneralTable = () => request('/general-table')
+
 // Debug
 export const debugParsePreview = (whatsappText) => request('/debug/parse-preview', {
   method: 'POST',
