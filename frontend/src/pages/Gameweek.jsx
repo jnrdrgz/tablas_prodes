@@ -226,7 +226,7 @@ export default function Gameweek() {
         resultCounts[pred] = (resultCounts[pred] || 0) + 1
       }
     })
-    if (Object.values(resultCounts).some(count => count > 6)) {
+    if (Object.values(resultCounts).some(count => count > 7)) {
       predictorsWithRepeats.add(predictor)
     }
   })
@@ -410,7 +410,7 @@ export default function Gameweek() {
                 <tr key={predictor}>
                   <td className="sticky left-0 bg-gray-800 z-10 font-medium text-left">
                     {predictorsWithRepeats.has(predictor) && (
-                      <span className="text-yellow-400 font-bold mr-1" title="Mas de 6 resultados iguales">!</span>
+                      <span className="text-yellow-400 font-bold mr-1" title="Mas de 7 resultados iguales">!</span>
                     )}
                     {predictor}
                   </td>
