@@ -48,6 +48,7 @@ export default function Gameweek() {
   const [showMatchesForm, setShowMatchesForm] = useState(false)
   const [showPredictionsForm, setShowPredictionsForm] = useState(false)
   const [showResultsForm, setShowResultsForm] = useState(false)
+  const [predictorsOrder, setPredictorsOrder] = useState('alpha')
 
   const isSubscribed = gameweek?.tournament?.subscribedToId != null
 
@@ -202,6 +203,34 @@ export default function Gameweek() {
     })
   })
 
+  // Sort predictors based on selected order
+  const sortedPredictors = (() => {
+    if (predictorsOrder === 'alpha' || !points) return predictorsList
+    const pointsArr = predictorsOrder === 'gameweek' ? points.gameweekPoints : points.tournamentPoints
+    const orderMap = {}
+    pointsArr.forEach((p, i) => { orderMap[p.predictor] = i })
+    return [...predictorsList].sort((a, b) => {
+      const posA = orderMap[a] ?? Number.MAX_SAFE_INTEGER
+      const posB = orderMap[b] ?? Number.MAX_SAFE_INTEGER
+      return posA - posB
+    })
+  })()
+
+  // Check for predictors with more than 6 equal results
+  const predictorsWithRepeats = new Set()
+  predictorsList.forEach(predictor => {
+    const resultCounts = {}
+    gameweek.matches.forEach(m => {
+      const pred = predictionMap[`${m.id}-${predictor}`]
+      if (pred && pred !== '9-9') {
+        resultCounts[pred] = (resultCounts[pred] || 0) + 1
+      }
+    })
+    if (Object.values(resultCounts).some(count => count > 6)) {
+      predictorsWithRepeats.add(predictor)
+    }
+  })
+
   return (
     <div className="max-w-full mx-auto px-2">
       <Link
@@ -246,7 +275,23 @@ export default function Gameweek() {
               {showMatchesForm ? 'Cerrar' : 'Agregar Partidos'}
             </button>
             <button
-              onClick={() => setShowResultsForm(!showResultsForm)}
+              onClick={() => {
+                const opening = !showResultsForm
+                if (opening && gameweek?.matches?.length > 0) {
+                  const preloaded = gameweek.matches.map(m => {
+                    if (m.result && m.result !== '9-9') {
+                      const parts = m.description.split('-').map(s => s.trim())
+                      const [home, away] = m.result.split('-')
+                      return parts.length >= 2
+                        ? `${parts[0]} ${home}-${away} ${parts[1]}`
+                        : `${m.description} ${m.result}`
+                    }
+                    return m.description
+                  }).join('\n')
+                  setResultsText(preloaded)
+                }
+                setShowResultsForm(opening)
+              }}
               className="btn btn-secondary"
             >
               {showResultsForm ? 'Cerrar' : 'Cargar Resultados'}
@@ -327,13 +372,24 @@ export default function Gameweek() {
         <div className="card mb-6 overflow-x-auto" ref={predictionsTableRef}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Tabla de Predicciones</h2>
-            <button
-              onClick={() => downloadAsImage(predictionsTableRef.current, `${gameweek.description}-predicciones`)}
-              className="btn btn-secondary text-sm"
-              title="Descargar como imagen"
-            >
-              📷 Descargar
-            </button>
+            <div className="flex items-center gap-2">
+              <select
+                value={predictorsOrder}
+                onChange={(e) => setPredictorsOrder(e.target.value)}
+                className="input w-auto text-sm"
+              >
+                <option value="alpha">Alfabetico</option>
+                <option value="gameweek">Puntos Fecha</option>
+                <option value="tournament">Puntos Torneo</option>
+              </select>
+              <button
+                onClick={() => downloadAsImage(predictionsTableRef.current, `${gameweek.description}-predicciones`)}
+                className="btn btn-secondary text-sm"
+                title="Descargar como imagen"
+              >
+                📷 Descargar
+              </button>
+            </div>
           </div>
           <table className="table-dark min-w-max">
             <thead>
@@ -350,9 +406,12 @@ export default function Gameweek() {
               </tr>
             </thead>
             <tbody>
-              {predictorsList.map(predictor => (
+              {sortedPredictors.map(predictor => (
                 <tr key={predictor}>
                   <td className="sticky left-0 bg-gray-800 z-10 font-medium text-left">
+                    {predictorsWithRepeats.has(predictor) && (
+                      <span className="text-yellow-400 font-bold mr-1" title="Mas de 6 resultados iguales">!</span>
+                    )}
                     {predictor}
                   </td>
                   {gameweek.matches.map(m => {
