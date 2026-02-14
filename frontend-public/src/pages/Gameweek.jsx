@@ -128,7 +128,7 @@ export default function Gameweek() {
     <div className="max-w-full mx-auto px-2">
       <Link
         to={`/tournament/${gameweek.tournamentId}`}
-        className="text-blue-400 hover:text-blue-300 mb-4 inline-block"
+        className="text-red-400 hover:text-red-300 mb-4 inline-block"
       >
         &larr; Volver a {gameweek.tournament.description}
       </Link>

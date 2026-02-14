@@ -51,8 +51,8 @@ export default function Tournaments() {
   if (selectedTournament) {
     return (
       <div className="max-w-4xl mx-auto">
-        <Link to="/" className="text-blue-400 hover:text-blue-300 mb-4 inline-block">
-          &larr; Volver a torneos
+        <Link to="/" className="text-red-400 hover:text-red-300 mb-4 inline-block">
+          &larr; Volver a categorías
         </Link>
 
         <h1 className="text-3xl font-bold mb-2">{selectedTournament.description}</h1>
@@ -81,7 +81,7 @@ export default function Tournaments() {
                 <div key={gw.id} className="flex justify-between items-center p-3 bg-gray-700 rounded">
                   <Link
                     to={`/gameweek/${gw.id}`}
-                    className="flex-1 hover:text-blue-400"
+                    className="flex-1 hover:text-red-400"
                   >
                     <span className="font-medium">{gw.description}</span>
                     <span className="text-sm text-gray-400 ml-3">
@@ -100,7 +100,7 @@ export default function Tournaments() {
   // Show tournaments list
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Torneos</h1>
+      <h1 className="text-3xl font-bold mb-6">Categorías</h1>
 
       {error && (
         <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded mb-4">
@@ -118,7 +118,7 @@ export default function Tournaments() {
             <div key={t.id} className="card">
               <Link
                 to={`/tournament/${t.id}`}
-                className="block hover:text-blue-400"
+                className="block hover:text-red-400"
               >
                 <h3 className="font-bold text-lg">{t.description}</h3>
                 <p className="text-sm text-gray-400">

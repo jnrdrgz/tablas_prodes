@@ -28,7 +28,7 @@ export default function GeneralTable() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Tabla General</h1>
+      <h1 className="text-2xl font-bold mb-6">Tabla General Temporada</h1>
 
       {!table || table.length === 0 ? (
         <div className="card text-center py-8">

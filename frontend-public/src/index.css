@@ -2,9 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Bebas Neue';
+  src: url('/bebas.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 body {
-  background-color: #1a1a2e;
+  background-color: #1a0808;
   color: #eee;
+  font-family: 'Bebas Neue', sans-serif;
 }
 
 .btn {
@@ -12,7 +21,7 @@ body {
 }
 
 .btn-primary {
-  @apply bg-blue-600 hover:bg-blue-700 text-white;
+  @apply bg-brand-600 hover:bg-brand-700 text-white;
 }
 
 .btn-secondary {
@@ -28,11 +37,11 @@ body {
 }
 
 .input {
-  @apply w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded focus:outline-none focus:border-blue-500;
+  @apply w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded focus:outline-none focus:border-red-500;
 }
 
 .textarea {
-  @apply w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded focus:outline-none focus:border-blue-500 font-mono text-sm;
+  @apply w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded focus:outline-none focus:border-red-500 font-mono text-sm;
 }
 
 .card {

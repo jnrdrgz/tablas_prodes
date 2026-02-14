@@ -6,13 +6,16 @@ import GeneralTable from './pages/GeneralTable'
 function App() {
   return (
     <div className="min-h-screen">
-      <nav className="bg-gray-900 p-4 mb-4">
-        <div className="container mx-auto flex gap-4">
-          <Link to="/" className="text-xl font-bold text-blue-400 hover:text-blue-300">
-            Tablador
+      <nav className="bg-brand-950 border-b border-brand-900 p-4 mb-4">
+        <div className="container mx-auto flex items-center gap-4">
+          <Link to="/" className="flex items-center gap-3">
+            <img src="/logo_cmn.png" alt="Conmigliazzo" className="h-10 w-10 invert" />
+            <span className="text-xl font-bold text-red-400 hover:text-red-300 font-bebas tracking-wider">
+              Prodes Conmigliazzo
+            </span>
           </Link>
-          <Link to="/general" className="text-gray-300 hover:text-white">
-            Tabla General
+          <Link to="/general" className="text-gray-300 hover:text-white font-bebas tracking-wide">
+            Tabla General Temporada
           </Link>
         </div>
       </nav>
