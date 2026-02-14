@@ -55,6 +55,8 @@ body {
 .table-dark th,
 .table-dark td {
   @apply px-2 py-1 border border-gray-700 text-center;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .table-dark th {
