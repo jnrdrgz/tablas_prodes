@@ -57,7 +57,7 @@ export default function Gameweek() {
       element.style.width = 'auto'
 
       const canvas = await html2canvas(element, {
-        backgroundColor: '#1f2937', // gray-800 background
+        backgroundColor: '#362222', // gray-800 red-tinted background
         scale: 2, // Higher resolution
         logging: false,
         useCORS: true,
