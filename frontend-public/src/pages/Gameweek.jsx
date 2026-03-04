@@ -115,6 +115,7 @@ export default function Gameweek() {
       const dataUrl = await toPng(element, {
         backgroundColor: '#362222',
         pixelRatio: 2,
+        skipFonts: true,
       })
       const link = document.createElement('a')
       link.download = `${filename}.png`
