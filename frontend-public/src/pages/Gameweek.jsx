@@ -50,22 +50,37 @@ export default function Gameweek() {
   async function downloadAsImage(element, filename) {
     if (!element) return
 
+    let clone = null
     try {
-      // Force desktop-like width for consistent rendering
-      const originalStyle = element.style.cssText
-      element.style.minWidth = '800px'
-      element.style.width = 'auto'
+      // Clone so we don't modify the real DOM
+      clone = element.cloneNode(true)
 
-      const canvas = await html2canvas(element, {
-        backgroundColor: '#362222', // gray-800 red-tinted background
-        scale: 2, // Higher resolution
-        logging: false,
-        useCORS: true,
-        windowWidth: 1920 // Force desktop viewport
+      // Strip overflow so html2canvas captures the full table width
+      clone.style.overflow = 'visible'
+      clone.style.overflowX = 'visible'
+      clone.style.width = 'auto'
+      clone.style.maxWidth = 'none'
+
+      // Replace sticky positioning — html2canvas misrenders sticky elements,
+      // causing wrong column widths and broken text-align: center
+      clone.querySelectorAll('*').forEach(el => {
+        if (window.getComputedStyle(el).position === 'sticky') {
+          el.style.position = 'relative'
+        }
       })
 
-      // Restore original style
-      element.style.cssText = originalStyle
+      // Mount off-screen so html2canvas can measure it
+      clone.style.position = 'fixed'
+      clone.style.top = '-99999px'
+      clone.style.left = '-99999px'
+      document.body.appendChild(clone)
+
+      const canvas = await html2canvas(clone, {
+        backgroundColor: '#362222',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+      })
 
       const link = document.createElement('a')
       link.download = `${filename}.png`
@@ -76,6 +91,8 @@ export default function Gameweek() {
     } catch (err) {
       console.error('[GAMEWEEK] Error downloading image:', err)
       alert('Error al descargar imagen')
+    } finally {
+      if (clone) document.body.removeChild(clone)
     }
   }
 
