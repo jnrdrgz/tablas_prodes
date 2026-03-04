@@ -69,6 +69,12 @@ export default function Gameweek() {
         }
       })
 
+      // html2canvas ignores vertical-align: middle from stylesheets on table cells,
+      // forcing it inline is the only reliable workaround
+      clone.querySelectorAll('td, th').forEach(el => {
+        el.style.verticalAlign = 'middle'
+      })
+
       // Mount off-screen so html2canvas can measure it
       clone.style.position = 'fixed'
       clone.style.top = '-99999px'
