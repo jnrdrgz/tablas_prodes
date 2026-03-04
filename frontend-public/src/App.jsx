@@ -14,7 +14,7 @@ function App() {
               Prodes Conmigliazzo
             </span>
           </Link>
-          <Link to="/general" className="text-gray-300 hover:text-white font-bebas tracking-wide">
+          <Link to="/general" className="text-gray-300 hover:text-white">
             Tabla General Temporada
           </Link>
         </div>

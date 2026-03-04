@@ -24,7 +24,7 @@ export default function Tournaments() {
   async function loadTournaments() {
     try {
       const data = await api.getTournaments()
-      setTournaments(data)
+      setTournaments([...data].sort((a, b) => a.description.localeCompare(b.description)))
       console.log('[TOURNAMENTS] Loaded tournaments')
     } catch (err) {
       console.error('[TOURNAMENTS] Error:', err)

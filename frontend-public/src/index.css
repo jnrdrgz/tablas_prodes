@@ -13,7 +13,7 @@
 body {
   background-color: #1a0808;
   color: #eee;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
 .btn {
