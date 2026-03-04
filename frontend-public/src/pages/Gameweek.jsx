@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import html2canvas from 'html2canvas'
+import { toPng } from 'html-to-image'
 import * as api from '../api'
 
 function compareResult(prediction, realResult) {
@@ -107,6 +108,30 @@ export default function Gameweek() {
     await downloadAsImage(allTablesRef.current, `${gameweek.description}-completo`)
   }
 
+  // Alternative download using html-to-image (better CSS support)
+  async function downloadAsImageV2(element, filename) {
+    if (!element) return
+    try {
+      const dataUrl = await toPng(element, {
+        backgroundColor: '#362222',
+        pixelRatio: 2,
+      })
+      const link = document.createElement('a')
+      link.download = `${filename}.png`
+      link.href = dataUrl
+      link.click()
+      console.log('[GAMEWEEK] Downloaded image (v2):', filename)
+    } catch (err) {
+      console.error('[GAMEWEEK] Error downloading image (v2):', err)
+      alert('Error al descargar imagen')
+    }
+  }
+
+  async function downloadAllTablesV2() {
+    if (!allTablesRef.current) return
+    await downloadAsImageV2(allTablesRef.current, `${gameweek.description}-completo`)
+  }
+
   useEffect(() => {
     loadData()
   }, [id])
@@ -170,13 +195,22 @@ export default function Gameweek() {
         <div className="card mb-6 overflow-x-auto" ref={predictionsTableRef}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Tabla de Predicciones</h2>
-            <button
-              onClick={() => downloadAsImage(predictionsTableRef.current, `${gameweek.description}-predicciones`)}
-              className="btn btn-secondary text-sm"
-              title="Descargar como imagen"
-            >
-              📷 Descargar
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => downloadAsImage(predictionsTableRef.current, `${gameweek.description}-predicciones`)}
+                className="btn btn-secondary text-sm"
+                title="Descargar (html2canvas)"
+              >
+                📷 Descargar
+              </button>
+              <button
+                onClick={() => downloadAsImageV2(predictionsTableRef.current, `${gameweek.description}-predicciones-v2`)}
+                className="btn btn-secondary text-sm"
+                title="Descargar (html-to-image)"
+              >
+                🖼 Descargar v2
+              </button>
+            </div>
           </div>
           <table className="table-dark min-w-max">
             <thead>
@@ -232,13 +266,20 @@ export default function Gameweek() {
         return (
           <>
             {/* Download All Tables Button */}
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-end gap-2 mb-4">
               <button
                 onClick={downloadAllTables}
                 className="btn btn-primary"
-                title="Descargar todas las tablas como imagen"
+                title="Descargar todas las tablas (html2canvas)"
               >
-                📷 Descargar Todas las Tablas
+                📷 Descargar Todas
+              </button>
+              <button
+                onClick={downloadAllTablesV2}
+                className="btn btn-primary"
+                title="Descargar todas las tablas (html-to-image)"
+              >
+                🖼 Descargar Todas v2
               </button>
             </div>
 
@@ -247,13 +288,22 @@ export default function Gameweek() {
               <div className="card" ref={gameweekPointsRef}>
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">Puntos Fecha</h2>
-                  <button
-                    onClick={() => downloadAsImage(gameweekPointsRef.current, `${gameweek.description}-puntos-fecha`)}
-                    className="btn btn-secondary text-sm"
-                    title="Descargar como imagen"
-                  >
-                    📷
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => downloadAsImage(gameweekPointsRef.current, `${gameweek.description}-puntos-fecha`)}
+                      className="btn btn-secondary text-sm"
+                      title="Descargar (html2canvas)"
+                    >
+                      📷
+                    </button>
+                    <button
+                      onClick={() => downloadAsImageV2(gameweekPointsRef.current, `${gameweek.description}-puntos-fecha-v2`)}
+                      className="btn btn-secondary text-sm"
+                      title="Descargar (html-to-image)"
+                    >
+                      🖼
+                    </button>
+                  </div>
                 </div>
               {points.gameweekPoints.length === 0 ? (
                 <p className="text-gray-400">Sin datos</p>
@@ -287,13 +337,22 @@ export default function Gameweek() {
             <div className="card" ref={tournamentPointsRef}>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">Puntos Torneo (hasta esta fecha)</h2>
-                <button
-                  onClick={() => downloadAsImage(tournamentPointsRef.current, `${gameweek.description}-puntos-torneo`)}
-                  className="btn btn-secondary text-sm"
-                  title="Descargar como imagen"
-                >
-                  📷
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => downloadAsImage(tournamentPointsRef.current, `${gameweek.description}-puntos-torneo`)}
+                    className="btn btn-secondary text-sm"
+                    title="Descargar (html2canvas)"
+                  >
+                    📷
+                  </button>
+                  <button
+                    onClick={() => downloadAsImageV2(tournamentPointsRef.current, `${gameweek.description}-puntos-torneo-v2`)}
+                    className="btn btn-secondary text-sm"
+                    title="Descargar (html-to-image)"
+                  >
+                    🖼
+                  </button>
+                </div>
               </div>
               {points.tournamentPoints.length === 0 ? (
                 <p className="text-gray-400">Sin datos</p>
