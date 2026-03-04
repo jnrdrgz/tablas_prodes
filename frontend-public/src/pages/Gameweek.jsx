@@ -111,32 +111,22 @@ export default function Gameweek() {
   // Alternative download using html-to-image (better CSS support)
   async function downloadAsImageV2(element, filename) {
     if (!element) return
-    let clone = null
     try {
-      clone = element.cloneNode(true)
-
-      // Remove overflow so the full table width is captured on mobile
-      clone.style.overflow = 'visible'
-      clone.style.overflowX = 'visible'
-      clone.style.width = 'auto'
-      clone.style.maxWidth = 'none'
-
-      // Fix sticky — html-to-image misrenders sticky elements
-      clone.querySelectorAll('*').forEach(el => {
-        if (window.getComputedStyle(el).position === 'sticky') {
-          el.style.position = 'relative'
-        }
-      })
-
-      clone.style.position = 'fixed'
-      clone.style.top = '-99999px'
-      clone.style.left = '-99999px'
-      document.body.appendChild(clone)
-
-      const dataUrl = await toPng(clone, {
+      // Use scrollWidth/scrollHeight so the full table is captured on mobile
+      // (not just the visible overflow area). The style override tells
+      // html-to-image to expand the root element to its full scrollable size.
+      const dataUrl = await toPng(element, {
         backgroundColor: '#362222',
         pixelRatio: 2,
         skipFonts: true,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        style: {
+          overflow: 'visible',
+          width: element.scrollWidth + 'px',
+          height: element.scrollHeight + 'px',
+          maxWidth: 'none',
+        },
       })
       const link = document.createElement('a')
       link.download = `${filename}.png`
@@ -146,8 +136,6 @@ export default function Gameweek() {
     } catch (err) {
       console.error('[GAMEWEEK] Error downloading image (v2):', err)
       alert('Error al descargar imagen')
-    } finally {
-      if (clone) document.body.removeChild(clone)
     }
   }
 
