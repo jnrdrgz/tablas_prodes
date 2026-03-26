@@ -304,7 +304,7 @@ export default function Gameweek() {
         >
           {showPredictionsForm ? 'Cerrar' : 'Cargar Predicciones (WhatsApp)'}
         </button>
-        {isSubscribed && predictorsList.length > 0 && (
+        {predictorsList.length > 0 && (
           <button
             onClick={handleDeleteAllPredictions}
             className="btn btn-danger"
