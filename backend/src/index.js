@@ -17,6 +17,7 @@ const mappingsRouter = require('./routes/mappings');
 const debugRouter = require('./routes/debug');
 const whatsappInputsRouter = require('./routes/whatsappInputs');
 const generalTableRouter = require('./routes/generalTable');
+const fraudAnalysisRouter = require('./routes/fraudAnalysis');
 
 app.use('/api/tournaments', tournamentsRouter);
 app.use('/api/gameweeks', gameweeksRouter);
@@ -26,6 +27,7 @@ app.use('/api/mappings', mappingsRouter);
 app.use('/api/debug', debugRouter);
 app.use('/api/whatsapp-inputs', whatsappInputsRouter);
 app.use('/api/general-table', generalTableRouter);
+app.use('/api/fraud-analysis', fraudAnalysisRouter);
 
 app.get('/api/health', (req, res) => {
   console.log('[HEALTH] Health check requested');

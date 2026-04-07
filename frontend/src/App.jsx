@@ -6,6 +6,7 @@ import Gameweek from './pages/Gameweek'
 import Debug from './pages/Debug'
 import WhatsappInputs from './pages/WhatsappInputs'
 import GeneralTable from './pages/GeneralTable'
+import FraudAnalysis from './pages/FraudAnalysis'
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
           <Route path="/tournament/:id" element={<Tournament />} />
           <Route path="/gameweek/:id" element={<Gameweek />} />
           <Route path="/general" element={<GeneralTable />} />
+          <Route path="/fraud/:id" element={<FraudAnalysis />} />
           <Route path="/debug" element={<Debug />} />
           <Route path="/inputs" element={<WhatsappInputs />} />
         </Routes>

@@ -85,6 +85,9 @@ export const debugParsePreview = (whatsappText) => request('/debug/parse-preview
   body: JSON.stringify({ whatsappText })
 })
 
+// Fraud Analysis
+export const getFraudAnalysis = (tournamentId) => request(`/fraud-analysis/${tournamentId}`)
+
 // WhatsApp Inputs
 export const getWhatsappInputs = () => request('/whatsapp-inputs')
 export const getWhatsappInput = (id) => request(`/whatsapp-inputs/${id}`)
