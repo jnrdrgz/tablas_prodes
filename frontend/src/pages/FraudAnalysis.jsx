@@ -138,7 +138,7 @@ export default function FraudAnalysis() {
                   <tr className="text-gray-400 border-b border-gray-600">
                     <th className="text-left py-1 pr-4">Fuente (subio antes)</th>
                     <th className="text-left py-1 pr-4 w-48">Similitud promedio</th>
-                    <th className="text-right py-1">Fechas en comun</th>
+                    <th className="text-right py-1">Fechas despues / total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -146,7 +146,7 @@ export default function FraudAnalysis() {
                     <tr key={cf.source} className="border-b border-gray-700">
                       <td className="py-2 pr-4 font-medium">{cf.source}</td>
                       <td className="py-2 pr-4 w-48">{scoreBar(cf.avgSimilarity)}</td>
-                      <td className="py-2 text-right text-gray-400">{cf.gameweeksCount}</td>
+                      <td className="py-2 text-right text-gray-400">{cf.gameweeksLater}/{cf.gameweeksTotal}</td>
                     </tr>
                   ))}
                 </tbody>

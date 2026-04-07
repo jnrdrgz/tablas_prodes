@@ -30,11 +30,15 @@ router.get('/:tournamentId', async (req, res) => {
 
     console.log(`[FRAUD] Found ${gameweeks.length} gameweeks`);
 
-    // Accumulate per-predictor stats across gameweeks
-    // copierData[predictor][source] = { totalSimilarity, count }
+    // copierData[copier][source] = { totalSimilarity, laterCount, coParticipation }
+    //   laterCount      = gameweeks where copier uploaded after source (with >=3 shared)
+    //   coParticipation = gameweeks where both participated (with >=3 shared)
+    //   totalSimilarity = sum of similarity for the laterCount gameweeks
     const copierData = {};
     // gwScores[predictor] = [copyScore per gameweek where not first uploader]
     const gwScores = {};
+
+    const MIN_SHARED = 3; // minimum shared non-blank predictions to count a pair in a gameweek
 
     const gameweekResults = [];
 
@@ -85,7 +89,8 @@ router.get('/:tournamentId', async (req, res) => {
             mid => predsB[mid] !== undefined && predsA[mid] !== '9-9' && predsB[mid] !== '9-9'
           );
 
-          if (sharedMatchIds.length === 0) continue;
+          // Skip pairs with too few shared predictions — not enough data
+          if (sharedMatchIds.length < MIN_SHARED) continue;
 
           const identical = sharedMatchIds.filter(mid => predsA[mid] === predsB[mid]).length;
           const similarity = identical / sharedMatchIds.length;
@@ -101,15 +106,20 @@ router.get('/:tournamentId', async (req, res) => {
             aFirst // true = A uploaded first, B is the potential copier
           });
 
-          // Accumulate copyFrom data
-          // The later uploader is the potential copier, earlier is the source
+          // Track co-participation for both directions (needed for the >=half filter)
           const copier = aFirst ? b : a;
           const source = aFirst ? a : b;
 
-          if (!copierData[copier]) copierData[copier] = {};
-          if (!copierData[copier][source]) copierData[copier][source] = { totalSimilarity: 0, count: 0 };
+          // Ensure both directions exist for coParticipation tracking
+          for (const [cp, src] of [[a, b], [b, a]]) {
+            if (!copierData[cp]) copierData[cp] = {};
+            if (!copierData[cp][src]) copierData[cp][src] = { totalSimilarity: 0, laterCount: 0, coParticipation: 0 };
+            copierData[cp][src].coParticipation += 1;
+          }
+
+          // Only accumulate similarity for the actual later uploader
           copierData[copier][source].totalSimilarity += similarity;
-          copierData[copier][source].count += 1;
+          copierData[copier][source].laterCount += 1;
         }
       }
 
@@ -165,11 +175,19 @@ router.get('/:tournamentId', async (req, res) => {
         : 0;
 
       // How much they copy from each specific user
+      // Only include sources where this predictor uploaded AFTER them in >= half of shared gameweeks
       const copyFrom = Object.entries(copierData[predictor] || {})
+        .filter(([, data]) => {
+          if (data.coParticipation === 0) return false;
+          return data.laterCount >= data.coParticipation / 2;
+        })
         .map(([source, data]) => ({
           source,
-          avgSimilarity: parseFloat((data.totalSimilarity / data.count).toFixed(3)),
-          gameweeksCount: data.count
+          avgSimilarity: data.laterCount > 0
+            ? parseFloat((data.totalSimilarity / data.laterCount).toFixed(3))
+            : 0,
+          gameweeksLater: data.laterCount,
+          gameweeksTotal: data.coParticipation
         }))
         .sort((a, b) => b.avgSimilarity - a.avgSimilarity);
 
