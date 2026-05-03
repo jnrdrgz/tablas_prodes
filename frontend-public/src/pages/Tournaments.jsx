@@ -55,7 +55,15 @@ export default function Tournaments() {
           &larr; Volver a categorías
         </Link>
 
-        <h1 className="text-3xl font-bold mb-2">{selectedTournament.description}</h1>
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-3xl font-bold">{selectedTournament.description}</h1>
+          <Link
+            to={`/tournament/${selectedTournament.id}/evolution`}
+            className="btn btn-secondary text-sm"
+          >
+            Evolución de Posiciones
+          </Link>
+        </div>
 
         {selectedTournament.subscribedToId && (
           <p className="text-yellow-500 mb-4">

@@ -2,6 +2,7 @@ import { Routes, Route, Link } from 'react-router-dom'
 import Tournaments from './pages/Tournaments'
 import Gameweek from './pages/Gameweek'
 import GeneralTable from './pages/GeneralTable'
+import PositionEvolution from './pages/PositionEvolution'
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/tournament/:id" element={<Tournaments />} />
           <Route path="/gameweek/:id" element={<Gameweek />} />
           <Route path="/general" element={<GeneralTable />} />
+          <Route path="/tournament/:id/evolution" element={<PositionEvolution />} />
         </Routes>
       </main>
     </div>
