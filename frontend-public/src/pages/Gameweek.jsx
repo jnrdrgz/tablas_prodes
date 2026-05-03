@@ -40,6 +40,7 @@ export default function Gameweek() {
   const [points, setPoints] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [predictorsOrder, setPredictorsOrder] = useState('alpha')
 
   // Refs for table screenshots
   const predictionsTableRef = useRef(null)
@@ -184,6 +185,19 @@ export default function Gameweek() {
     })
   })
 
+  // Sort predictors based on selected order
+  const sortedPredictors = (() => {
+    if (predictorsOrder === 'alpha' || !points) return predictorsList
+    const pointsArr = predictorsOrder === 'gameweek' ? points.gameweekPoints : points.tournamentPoints
+    const orderMap = {}
+    pointsArr.forEach((p, i) => { orderMap[p.predictor] = i })
+    return [...predictorsList].sort((a, b) => {
+      const posA = orderMap[a] ?? Number.MAX_SAFE_INTEGER
+      const posB = orderMap[b] ?? Number.MAX_SAFE_INTEGER
+      return posA - posB
+    })
+  })()
+
   return (
     <div className="max-w-full mx-auto px-2">
       <Link
@@ -207,7 +221,16 @@ export default function Gameweek() {
         <div className="card mb-6 overflow-x-auto" ref={predictionsTableRef}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Tabla de Predicciones</h2>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <select
+                value={predictorsOrder}
+                onChange={(e) => setPredictorsOrder(e.target.value)}
+                className="input w-auto text-sm"
+              >
+                <option value="alpha">Alfabetico</option>
+                <option value="gameweek">Puntos Fecha</option>
+                <option value="tournament">Puntos Torneo</option>
+              </select>
               {/* <button
                 onClick={() => downloadAsImage(predictionsTableRef.current, `${gameweek.description}-predicciones`)}
                 className="btn btn-secondary text-sm"
@@ -239,7 +262,7 @@ export default function Gameweek() {
               </tr>
             </thead>
             <tbody>
-              {predictorsList.map(predictor => (
+              {sortedPredictors.map(predictor => (
                 <tr key={predictor}>
                   <td className="sticky left-0 bg-gray-800 z-10 font-medium text-left">
                     {predictor}
