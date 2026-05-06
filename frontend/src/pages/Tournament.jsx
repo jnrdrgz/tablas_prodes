@@ -109,6 +109,14 @@ export default function Tournament() {
         </div>
       )}
 
+      {/* Fraud Analysis Link */}
+      <Link
+        to={`/fraud/${id}`}
+        className="btn btn-secondary mb-4 mr-2 inline-block"
+      >
+        Analisis de fraude
+      </Link>
+
       {/* Settings Toggle */}
       <button
         onClick={() => setShowSettings(!showSettings)}

@@ -12,5 +12,8 @@
     "build:frontend": "npm run build -w frontend",
     "db:migrate": "npm run db:migrate -w backend",
     "db:generate": "npm run db:generate -w backend"
+  },
+  "dependencies": {
+    "html-to-image": "^1.11.13"
   }
 }

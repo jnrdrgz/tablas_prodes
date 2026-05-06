@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import html2canvas from 'html2canvas'
+import { toPng } from 'html-to-image'
 import * as api from '../api'
 
 function compareResult(prediction, realResult) {
@@ -39,6 +40,7 @@ export default function Gameweek() {
   const [points, setPoints] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [predictorsOrder, setPredictorsOrder] = useState('alpha')
 
   // Refs for table screenshots
   const predictionsTableRef = useRef(null)
@@ -50,22 +52,43 @@ export default function Gameweek() {
   async function downloadAsImage(element, filename) {
     if (!element) return
 
+    let clone = null
     try {
-      // Force desktop-like width for consistent rendering
-      const originalStyle = element.style.cssText
-      element.style.minWidth = '800px'
-      element.style.width = 'auto'
+      // Clone so we don't modify the real DOM
+      clone = element.cloneNode(true)
 
-      const canvas = await html2canvas(element, {
-        backgroundColor: '#1f2937', // gray-800 background
-        scale: 2, // Higher resolution
-        logging: false,
-        useCORS: true,
-        windowWidth: 1920 // Force desktop viewport
+      // Strip overflow so html2canvas captures the full table width
+      clone.style.overflow = 'visible'
+      clone.style.overflowX = 'visible'
+      clone.style.width = 'auto'
+      clone.style.maxWidth = 'none'
+
+      // Replace sticky positioning — html2canvas misrenders sticky elements,
+      // causing wrong column widths and broken text-align: center
+      clone.querySelectorAll('*').forEach(el => {
+        if (window.getComputedStyle(el).position === 'sticky') {
+          el.style.position = 'relative'
+        }
       })
 
-      // Restore original style
-      element.style.cssText = originalStyle
+      // html2canvas ignores vertical-align: middle from stylesheets on table cells,
+      // forcing it inline is the only reliable workaround
+      clone.querySelectorAll('td, th').forEach(el => {
+        el.style.verticalAlign = 'middle'
+      })
+
+      // Mount off-screen so html2canvas can measure it
+      clone.style.position = 'fixed'
+      clone.style.top = '-99999px'
+      clone.style.left = '-99999px'
+      document.body.appendChild(clone)
+
+      const canvas = await html2canvas(clone, {
+        backgroundColor: '#362222',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+      })
 
       const link = document.createElement('a')
       link.download = `${filename}.png`
@@ -76,12 +99,50 @@ export default function Gameweek() {
     } catch (err) {
       console.error('[GAMEWEEK] Error downloading image:', err)
       alert('Error al descargar imagen')
+    } finally {
+      if (clone) document.body.removeChild(clone)
     }
   }
 
   async function downloadAllTables() {
     if (!allTablesRef.current) return
     await downloadAsImage(allTablesRef.current, `${gameweek.description}-completo`)
+  }
+
+  // Alternative download using html-to-image (better CSS support)
+  async function downloadAsImageV2(element, filename) {
+    if (!element) return
+    try {
+      // Use scrollWidth/scrollHeight so the full table is captured on mobile
+      // (not just the visible overflow area). The style override tells
+      // html-to-image to expand the root element to its full scrollable size.
+      const dataUrl = await toPng(element, {
+        backgroundColor: '#362222',
+        pixelRatio: 2,
+        skipFonts: true,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        style: {
+          overflow: 'visible',
+          width: element.scrollWidth + 'px',
+          height: element.scrollHeight + 'px',
+          maxWidth: 'none',
+        },
+      })
+      const link = document.createElement('a')
+      link.download = `${filename}.png`
+      link.href = dataUrl
+      link.click()
+      console.log('[GAMEWEEK] Downloaded image (v2):', filename)
+    } catch (err) {
+      console.error('[GAMEWEEK] Error downloading image (v2):', err)
+      alert('Error al descargar imagen')
+    }
+  }
+
+  async function downloadAllTablesV2() {
+    if (!allTablesRef.current) return
+    await downloadAsImageV2(allTablesRef.current, `${gameweek.description}-completo`)
   }
 
   useEffect(() => {
@@ -124,11 +185,24 @@ export default function Gameweek() {
     })
   })
 
+  // Sort predictors based on selected order
+  const sortedPredictors = (() => {
+    if (predictorsOrder === 'alpha' || !points) return predictorsList
+    const pointsArr = predictorsOrder === 'gameweek' ? points.gameweekPoints : points.tournamentPoints
+    const orderMap = {}
+    pointsArr.forEach((p, i) => { orderMap[p.predictor] = i })
+    return [...predictorsList].sort((a, b) => {
+      const posA = orderMap[a] ?? Number.MAX_SAFE_INTEGER
+      const posB = orderMap[b] ?? Number.MAX_SAFE_INTEGER
+      return posA - posB
+    })
+  })()
+
   return (
     <div className="max-w-full mx-auto px-2">
       <Link
         to={`/tournament/${gameweek.tournamentId}`}
-        className="text-blue-400 hover:text-blue-300 mb-4 inline-block"
+        className="text-red-400 hover:text-red-300 mb-4 inline-block"
       >
         &larr; Volver a {gameweek.tournament.description}
       </Link>
@@ -147,13 +221,31 @@ export default function Gameweek() {
         <div className="card mb-6 overflow-x-auto" ref={predictionsTableRef}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Tabla de Predicciones</h2>
-            <button
-              onClick={() => downloadAsImage(predictionsTableRef.current, `${gameweek.description}-predicciones`)}
-              className="btn btn-secondary text-sm"
-              title="Descargar como imagen"
-            >
-              📷 Descargar
-            </button>
+            <div className="flex items-center gap-2">
+              <select
+                value={predictorsOrder}
+                onChange={(e) => setPredictorsOrder(e.target.value)}
+                className="input w-auto text-sm"
+              >
+                <option value="alpha">Alfabetico</option>
+                <option value="gameweek">Puntos Fecha</option>
+                <option value="tournament">Puntos Torneo</option>
+              </select>
+              {/* <button
+                onClick={() => downloadAsImage(predictionsTableRef.current, `${gameweek.description}-predicciones`)}
+                className="btn btn-secondary text-sm"
+                title="Descargar (html2canvas)"
+              >
+                📷 Descargar
+              </button> */}
+              <button
+                onClick={() => downloadAsImageV2(predictionsTableRef.current, `${gameweek.description}-predicciones`)}
+                className="btn btn-secondary text-sm"
+                title="Descargar como imagen"
+              >
+                📷 Descargar
+              </button>
+            </div>
           </div>
           <table className="table-dark min-w-max">
             <thead>
@@ -170,7 +262,7 @@ export default function Gameweek() {
               </tr>
             </thead>
             <tbody>
-              {predictorsList.map(predictor => (
+              {sortedPredictors.map(predictor => (
                 <tr key={predictor}>
                   <td className="sticky left-0 bg-gray-800 z-10 font-medium text-left">
                     {predictor}
@@ -209,9 +301,16 @@ export default function Gameweek() {
         return (
           <>
             {/* Download All Tables Button */}
-            <div className="flex justify-end mb-4">
-              <button
+            <div className="flex justify-end gap-2 mb-4">
+              {/* <button
                 onClick={downloadAllTables}
+                className="btn btn-primary"
+                title="Descargar todas las tablas (html2canvas)"
+              >
+                📷 Descargar Todas
+              </button> */}
+              <button
+                onClick={downloadAllTablesV2}
                 className="btn btn-primary"
                 title="Descargar todas las tablas como imagen"
               >
@@ -224,13 +323,22 @@ export default function Gameweek() {
               <div className="card" ref={gameweekPointsRef}>
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">Puntos Fecha</h2>
-                  <button
-                    onClick={() => downloadAsImage(gameweekPointsRef.current, `${gameweek.description}-puntos-fecha`)}
-                    className="btn btn-secondary text-sm"
-                    title="Descargar como imagen"
-                  >
-                    📷
-                  </button>
+                  <div className="flex gap-2">
+                    {/* <button
+                      onClick={() => downloadAsImage(gameweekPointsRef.current, `${gameweek.description}-puntos-fecha`)}
+                      className="btn btn-secondary text-sm"
+                      title="Descargar (html2canvas)"
+                    >
+                      📷
+                    </button> */}
+                    <button
+                      onClick={() => downloadAsImageV2(gameweekPointsRef.current, `${gameweek.description}-puntos-fecha`)}
+                      className="btn btn-secondary text-sm"
+                      title="Descargar como imagen"
+                    >
+                      📷
+                    </button>
+                  </div>
                 </div>
               {points.gameweekPoints.length === 0 ? (
                 <p className="text-gray-400">Sin datos</p>
@@ -264,13 +372,22 @@ export default function Gameweek() {
             <div className="card" ref={tournamentPointsRef}>
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">Puntos Torneo (hasta esta fecha)</h2>
-                <button
-                  onClick={() => downloadAsImage(tournamentPointsRef.current, `${gameweek.description}-puntos-torneo`)}
-                  className="btn btn-secondary text-sm"
-                  title="Descargar como imagen"
-                >
-                  📷
-                </button>
+                <div className="flex gap-2">
+                  {/* <button
+                    onClick={() => downloadAsImage(tournamentPointsRef.current, `${gameweek.description}-puntos-torneo`)}
+                    className="btn btn-secondary text-sm"
+                    title="Descargar (html2canvas)"
+                  >
+                    📷
+                  </button> */}
+                  <button
+                    onClick={() => downloadAsImageV2(tournamentPointsRef.current, `${gameweek.description}-puntos-torneo`)}
+                    className="btn btn-secondary text-sm"
+                    title="Descargar como imagen"
+                  >
+                    📷
+                  </button>
+                </div>
               </div>
               {points.tournamentPoints.length === 0 ? (
                 <p className="text-gray-400">Sin datos</p>
