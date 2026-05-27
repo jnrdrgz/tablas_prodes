@@ -1,5 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
+const { parseMatchList } = require('../utils/whatsappParser');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -85,12 +86,12 @@ router.post('/bulk', async (req, res) => {
       return res.status(400).json({ error: 'Cannot create matches on subscribed tournament' });
     }
 
-    // Parse matches text - each line is a match like "Team A - Team B"
-    const lines = matchesText.split('\n').filter(line => line.trim());
+    // Parse matches text — strips WhatsApp headers if present, returns plain lines
+    const lines = parseMatchList(matchesText);
     const createdMatches = [];
 
     for (const line of lines) {
-      const description = line.trim();
+      const description = line;
       if (description) {
         const match = await prisma.match.create({
           data: {

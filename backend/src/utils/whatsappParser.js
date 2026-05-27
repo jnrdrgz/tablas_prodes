@@ -79,36 +79,87 @@ function parseWhatsappPredictions(text, mappings = {}) {
 /**
  * Extract scores from a prediction string (content after the name:)
  * Input should NOT include the name/number part
- * Handles formats like "Team1 1-0 Team2Team3 2-1 Team4["
+ * Handles formats like "Team1 1-0 Team2Team3 2-1 Team4[" (football)
+ * and tennis: "J. Sinner (1) 3-0 J. CerundoloA. Rinderknech (22) 3-1 M. Berrettini["
  */
 function extractScores(contentStr) {
   // Remove the trailing [
   const cleanStr = contentStr.replace(/\[$/g, '');
 
-  // Extract all single digits (scores are typically 0-9)
-  // This approach extracts digit by digit and pairs them
-  const numbers = cleanStr.replace(/\D/g, '').split('');
+  // Strip parenthetical content (tennis seedings like (1), (22), qualifiers (Q), (WC))
+  // so their numbers don't corrupt the score extraction
+  const strippedStr = cleanStr.replace(/\([^)]*\)/g, '');
 
-  console.log(`[PARSER] Extracted digits: ${numbers.join(',')}`);
+  console.log(`[PARSER] Stripped seedings: ${strippedStr.substring(0, 100)}`);
 
-  const scores = [];
-  for (let i = 0; i < numbers.length; i += 2) {
-    if (numbers[i] !== undefined && numbers[i + 1] !== undefined) {
-      scores.push(`${numbers[i]}-${numbers[i + 1]}`);
-    }
-  }
+  // Extract score patterns: "3-0", "3 - 0", "1-3" etc. (works for both football and tennis)
+  const scoreRegex = /(\d+)\s*-\s*(\d+)/g;
+  const scoreMatches = [...strippedStr.matchAll(scoreRegex)];
+  const scores = scoreMatches.map(m => `${m[1]}-${m[2]}`);
+
+  console.log(`[PARSER] Found ${scores.length} scores: ${scores.join(', ')}`);
 
   return scores;
 }
 
+// Returns true if a line looks like a tennis match line (starts with "A. Lastname")
+function isTennisLine(line) {
+  return /^[A-Z]\.\s+\S/.test(line);
+}
+
+// Given a tennis match line like "J. Sinner (1) 3-0 J. Cerundolo" or
+// "J. Sinner (1) vs J. Cerundolo", returns "SIN-CER".
+// Takes the last name of each player and uppercases the first 3 letters.
+function parseTennisMatchDescription(line) {
+  const cleaned = line
+    .replace(/\([^)]*\)/g, '')       // strip seedings: (1), (22), (Q), (WC)
+    .replace(/\d+\s*-\s*\d+/g, '')  // strip scores: 3-0, 3 - 0
+    .replace(/\bvs\.?\b/gi, '')      // strip "vs" separator
+    .trim();
+
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  const players = [];
+  let currentWords = [];
+  let inPlayer = false;
+
+  for (const token of tokens) {
+    if (/^[A-Z]\.$/.test(token)) {
+      // Start of a new player (initial like "J.")
+      if (inPlayer && currentWords.length > 0) {
+        players.push(currentWords);
+        currentWords = [];
+      }
+      inPlayer = true;
+    } else if (inPlayer) {
+      currentWords.push(token);
+    }
+  }
+  if (currentWords.length > 0) players.push(currentWords);
+
+  if (players.length < 2) return null;
+
+  const abbr = (words) =>
+    words[words.length - 1].replace(/[^a-zA-ZáéíóúñüÁÉÍÓÚÑÜ]/g, '').substring(0, 3).toUpperCase();
+
+  return `${abbr(players[0])}-${abbr(players[1])}`;
+}
+
 /**
- * Parse simple match list
- * Input: "Team A - Team B\nTeam C - Team D"
- * Returns array of match descriptions
+ * Parse match list, stripping WhatsApp headers if present.
+ * For tennis lines ("J. Sinner (1) 3-0 J. Cerundolo"), produces abbreviated
+ * descriptions like "SIN-CER". Plain football lines are returned as-is.
  */
 function parseMatchList(text) {
   const lines = text.split('\n').filter(line => line.trim());
-  return lines.map(line => line.trim());
+  return lines
+    .map(line => {
+      const cleaned = line.replace(/^\[[\d/,\s:]+\]\s*[^:]+:\s*/, '').trim();
+      if (isTennisLine(cleaned)) {
+        return parseTennisMatchDescription(cleaned) || cleaned;
+      }
+      return cleaned;
+    })
+    .filter(line => line);
 }
 
 module.exports = {
