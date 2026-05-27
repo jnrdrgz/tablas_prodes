@@ -112,8 +112,9 @@ function isTennisLine(line) {
 // Takes the last name of each player and uppercases the first 3 letters.
 function parseTennisMatchDescription(line) {
   const cleaned = line
-    .replace(/\([^)]*\)/g, '')       // strip seedings: (1), (22), (Q), (WC)
+    .replace(/\([^)]*\)/g, '')       // strip seedings: (1), (22), (Q), (WC), (LL)
     .replace(/\d+\s*-\s*\d+/g, '')  // strip scores: 3-0, 3 - 0
+    .replace(/\s+-\s+/g, ' ')        // strip player separator " - " (partidos.txt format)
     .replace(/\bvs\.?\b/gi, '')      // strip "vs" separator
     .trim();
 
