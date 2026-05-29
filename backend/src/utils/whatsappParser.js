@@ -102,64 +102,14 @@ function extractScores(contentStr) {
   return scores;
 }
 
-// Returns true if a line looks like a tennis match line (starts with "A. Lastname")
-function isTennisLine(line) {
-  return /^[A-Z]\.\s+\S/.test(line);
-}
-
-// Given a tennis match line like "J. Sinner (1) 3-0 J. Cerundolo" or
-// "J. Sinner (1) vs J. Cerundolo", returns "SIN-CER".
-// Takes the last name of each player and uppercases the first 3 letters.
-function parseTennisMatchDescription(line) {
-  const cleaned = line
-    .replace(/\([^)]*\)/g, '')       // strip seedings: (1), (22), (Q), (WC), (LL)
-    .replace(/\d+\s*-\s*\d+/g, '')  // strip scores: 3-0, 3 - 0
-    .replace(/\s+-\s+/g, ' ')        // strip player separator " - " (partidos.txt format)
-    .replace(/\bvs\.?\b/gi, '')      // strip "vs" separator
-    .trim();
-
-  const tokens = cleaned.split(/\s+/).filter(Boolean);
-  const players = [];
-  let currentWords = [];
-  let inPlayer = false;
-
-  for (const token of tokens) {
-    if (/^[A-Z]\.$/.test(token)) {
-      // Start of a new player (initial like "J.")
-      if (inPlayer && currentWords.length > 0) {
-        players.push(currentWords);
-        currentWords = [];
-      }
-      inPlayer = true;
-    } else if (inPlayer) {
-      currentWords.push(token);
-    }
-  }
-  if (currentWords.length > 0) players.push(currentWords);
-
-  if (players.length < 2) return null;
-
-  const abbr = (words) =>
-    words[words.length - 1].replace(/[^a-zA-ZáéíóúñüÁÉÍÓÚÑÜ]/g, '').substring(0, 3).toUpperCase();
-
-  return `${abbr(players[0])}-${abbr(players[1])}`;
-}
-
 /**
  * Parse match list, stripping WhatsApp headers if present.
- * For tennis lines ("J. Sinner (1) 3-0 J. Cerundolo"), produces abbreviated
- * descriptions like "SIN-CER". Plain football lines are returned as-is.
+ * Full descriptions are saved as-is — abbreviation is done on the frontend.
  */
 function parseMatchList(text) {
   const lines = text.split('\n').filter(line => line.trim());
   return lines
-    .map(line => {
-      const cleaned = line.replace(/^\[[\d/,\s:]+\]\s*[^:]+:\s*/, '').trim();
-      if (isTennisLine(cleaned)) {
-        return parseTennisMatchDescription(cleaned) || cleaned;
-      }
-      return cleaned;
-    })
+    .map(line => line.replace(/^\[[\d/,\s:]+\]\s*[^:]+:\s*/, '').trim())
     .filter(line => line);
 }
 

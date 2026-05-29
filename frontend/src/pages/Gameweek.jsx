@@ -25,7 +25,48 @@ function compareResult(prediction, realResult) {
   return 'wrong'
 }
 
+// Detects tennis format: starts with "A. Lastname"
+function isTennisDescription(desc) {
+  return /^[A-Z]\.\s+\S/.test(desc)
+}
+
+// For tennis: "J. Sinner (1) - C. Tabur (WC)" -> "SIN-TAB"
+function getTennisShortName(desc) {
+  const cleaned = desc
+    .replace(/\([^)]*\)/g, '')       // strip (1), (WC), (Q), (LL)
+    .replace(/\d+\s*-\s*\d+/g, '')  // strip scores like 3-0
+    .replace(/\s+-\s+/g, ' ')        // strip " - " player separator
+    .replace(/\bvs\.?\b/gi, '')      // strip "vs"
+    .trim()
+
+  const tokens = cleaned.split(/\s+/).filter(Boolean)
+  const players = []
+  let currentWords = []
+  let inPlayer = false
+
+  for (const token of tokens) {
+    if (/^[A-Z]\.$/.test(token)) {
+      if (inPlayer && currentWords.length > 0) {
+        players.push(currentWords)
+        currentWords = []
+      }
+      inPlayer = true
+    } else if (inPlayer) {
+      currentWords.push(token)
+    }
+  }
+  if (currentWords.length > 0) players.push(currentWords)
+
+  if (players.length < 2) return desc.substring(0, 7)
+
+  const abbr = (words) =>
+    words[words.length - 1].replace(/[^a-zA-ZáéíóúñüÁÉÍÓÚÑÜ]/g, '').substring(0, 3).toUpperCase()
+
+  return `${abbr(players[0])}-${abbr(players[1])}`
+}
+
 function getMatchShortName(description) {
+  if (isTennisDescription(description)) return getTennisShortName(description)
   const parts = description.split('-').map(s => s.trim())
   if (parts.length >= 2) {
     return parts[0].substring(0, 3).toUpperCase() + '-' + parts[1].substring(0, 3).toUpperCase()
@@ -280,11 +321,7 @@ export default function Gameweek() {
                 if (opening && gameweek?.matches?.length > 0) {
                   const preloaded = gameweek.matches.map(m => {
                     if (m.result && m.result !== '9-9') {
-                      const parts = m.description.split('-').map(s => s.trim())
-                      const [home, away] = m.result.split('-')
-                      return parts.length >= 2
-                        ? `${parts[0]} ${home}-${away} ${parts[1]}`
-                        : `${m.description} ${m.result}`
+                      return `${m.description} ${m.result}`
                     }
                     return m.description
                   }).join('\n')
