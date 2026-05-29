@@ -26,7 +26,46 @@ function compareResult(prediction, realResult) {
   return 'wrong'
 }
 
+function isTennisDescription(desc) {
+  return /^[A-Z]\.\s+\S/.test(desc)
+}
+
+function getTennisShortName(desc) {
+  const cleaned = desc
+    .replace(/\([^)]*\)/g, '')
+    .replace(/\d+\s*-\s*\d+/g, '')
+    .replace(/\s+-\s+/g, ' ')
+    .replace(/\bvs\.?\b/gi, '')
+    .trim()
+
+  const tokens = cleaned.split(/\s+/).filter(Boolean)
+  const players = []
+  let currentWords = []
+  let inPlayer = false
+
+  for (const token of tokens) {
+    if (/^[A-Z]\.$/.test(token)) {
+      if (inPlayer && currentWords.length > 0) {
+        players.push(currentWords)
+        currentWords = []
+      }
+      inPlayer = true
+    } else if (inPlayer) {
+      currentWords.push(token)
+    }
+  }
+  if (currentWords.length > 0) players.push(currentWords)
+
+  if (players.length < 2) return desc.substring(0, 7)
+
+  const abbr = (words) =>
+    words[words.length - 1].replace(/[^a-zA-ZáéíóúñüÁÉÍÓÚÑÜ]/g, '').substring(0, 3).toUpperCase()
+
+  return `${abbr(players[0])}-${abbr(players[1])}`
+}
+
 function getMatchShortName(description) {
+  if (isTennisDescription(description)) return getTennisShortName(description)
   const parts = description.split('-').map(s => s.trim())
   if (parts.length >= 2) {
     return parts[0].substring(0, 3).toUpperCase() + '-' + parts[1].substring(0, 3).toUpperCase()
