@@ -125,7 +125,7 @@ server {
 
 ### Flujo basico
 
-1. **Crear mapeos** - En la pagina principal, agregar mapeos de numeros de telefono a nombres (ej: "+54 9 381 574-8792" -> "Pablo")
+1. **Crear mapeos** - En la pagina principal, agregar mapeos de numeros de telefono a nombres (ej: "+54 9 381 222-1111" -> "Pablo")
 
 2. **Crear torneo** - Crear un nuevo torneo con nombre descriptivo
 
@@ -140,7 +140,7 @@ server {
 
 5. **Cargar predicciones** - Pegar el texto copiado de WhatsApp con las predicciones:
    ```
-   [1/21, 21:39] PMolina: Boca 2-1 River
+   [1/21, 21:39] PLopez: Boca 2-1 River
    Racing 1-0 Independiente
    San Lorenzo 0-0 Huracan
    [1/21, 23:13] +54 9 381 574-8792: Boca 1-1 River
@@ -190,8 +190,8 @@ npm run db:seed-mappings
 
 Lee el archivo `mappings.txt` en la raiz del proyecto y carga los mapeos. Formato del archivo:
 ```
-+54 9 381 574-8792=Pablo
-+54 9 381 456-3246=Juan
++54 9 381 111-2222=Pablo
++54 9 381 444-3333=Juan
 ```
 
 ### Debug del parser
