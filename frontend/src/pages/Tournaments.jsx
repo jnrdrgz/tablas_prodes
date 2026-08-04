@@ -24,6 +24,20 @@ export default function Tournaments() {
     }
   }
 
+  async function handleToggleArchive(id, name, archived) {
+    const action = archived ? 'Archivar' : 'Desarchivar'
+    if (!confirm(`${action} torneo "${name}"? ${archived ? 'Dejara de verse en la web publica.' : 'Volvera a verse en la web publica.'}`)) return
+
+    try {
+      await api.setTournamentArchived(id, archived)
+      console.log(`[TOURNAMENTS] Tournament ${id} archived=${archived}`)
+      loadTournaments()
+    } catch (err) {
+      console.error('[TOURNAMENTS] Error archiving:', err)
+      setError(err.message)
+    }
+  }
+
   async function handleDelete(id, name) {
     if (!confirm(`Eliminar torneo "${name}"? Esto eliminara todas las fechas y predicciones.`)) return
 
@@ -58,12 +72,22 @@ export default function Tournaments() {
       ) : (
         <div className="space-y-3">
           {tournaments.map(t => (
-            <div key={t.id} className="card flex justify-between items-center">
+            <div
+              key={t.id}
+              className={`card flex justify-between items-center ${t.archived ? '!bg-amber-900/40 border border-amber-700' : ''}`}
+            >
               <Link
                 to={`/tournament/${t.id}`}
                 className="flex-1 hover:text-blue-400"
               >
-                <h3 className="font-bold text-lg">{t.description}</h3>
+                <h3 className="font-bold text-lg">
+                  {t.description}
+                  {t.archived && (
+                    <span className="ml-2 text-xs font-normal bg-amber-700 text-amber-100 px-2 py-0.5 rounded align-middle">
+                      ARCHIVADO
+                    </span>
+                  )}
+                </h3>
                 <p className="text-sm text-gray-400">
                   {t._count.gameweeks} fechas
                   {t.subscribedTo && (
@@ -74,8 +98,14 @@ export default function Tournaments() {
                 </p>
               </Link>
               <button
+                onClick={() => handleToggleArchive(t.id, t.description, !t.archived)}
+                className="btn btn-secondary ml-4"
+              >
+                {t.archived ? 'Desarchivar' : 'Archivar'}
+              </button>
+              <button
                 onClick={() => handleDelete(t.id, t.description)}
-                className="btn btn-danger ml-4"
+                className="btn btn-danger ml-2"
               >
                 Eliminar
               </button>

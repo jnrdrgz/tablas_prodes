@@ -22,6 +22,9 @@ function App() {
           <Link to="/general" className="text-gray-300 hover:text-white">
             Tabla General
           </Link>
+          <Link to="/historica" className="text-gray-300 hover:text-white">
+            Tabla Historica
+          </Link>
           <Link to="/inputs" className="text-gray-300 hover:text-white">
             Historial
           </Link>
@@ -37,6 +40,7 @@ function App() {
           <Route path="/tournament/:id" element={<Tournament />} />
           <Route path="/gameweek/:id" element={<Gameweek />} />
           <Route path="/general" element={<GeneralTable />} />
+          <Route path="/historica" element={<GeneralTable historic />} />
           <Route path="/fraud/:id" element={<FraudAnalysis />} />
           <Route path="/debug" element={<Debug />} />
           <Route path="/inputs" element={<WhatsappInputs />} />

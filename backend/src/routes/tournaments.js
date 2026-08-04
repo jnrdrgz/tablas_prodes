@@ -5,11 +5,18 @@ const { calculateTournamentPointsUntilGameweek } = require('../utils/points');
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Archived tournaments are hidden from the public site; admin passes includeArchived=true
+function wantsArchived(req) {
+  return req.query.includeArchived === 'true';
+}
+
 // Get all tournaments
 router.get('/', async (req, res) => {
-  console.log('[TOURNAMENTS] Fetching all tournaments');
+  const includeArchived = wantsArchived(req);
+  console.log(`[TOURNAMENTS] Fetching all tournaments (includeArchived=${includeArchived})`);
   try {
     const tournaments = await prisma.tournament.findMany({
+      where: includeArchived ? {} : { archived: false },
       include: {
         subscribedTo: true,
         _count: { select: { gameweeks: true } }
@@ -43,6 +50,10 @@ router.get('/:id', async (req, res) => {
     });
     if (!tournament) {
       console.log(`[TOURNAMENTS] Tournament ${id} not found`);
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+    if (tournament.archived && !wantsArchived(req)) {
+      console.log(`[TOURNAMENTS] Tournament ${id} is archived and not public`);
       return res.status(404).json({ error: 'Tournament not found' });
     }
     console.log(`[TOURNAMENTS] Found tournament: ${tournament.description}`);
@@ -88,6 +99,24 @@ router.put('/:id', async (req, res) => {
   } catch (error) {
     console.error('[TOURNAMENTS] Error updating tournament:', error);
     res.status(500).json({ error: 'Failed to update tournament' });
+  }
+});
+
+// Archive / unarchive tournament (admin only)
+router.put('/:id/archive', async (req, res) => {
+  const { id } = req.params;
+  const archived = req.body.archived !== false;
+  console.log(`[TOURNAMENTS] Setting archived=${archived} on tournament ${id}`);
+  try {
+    const tournament = await prisma.tournament.update({
+      where: { id: parseInt(id) },
+      data: { archived }
+    });
+    console.log(`[TOURNAMENTS] Tournament ${id} archived=${tournament.archived}`);
+    res.json(tournament);
+  } catch (error) {
+    console.error('[TOURNAMENTS] Error archiving tournament:', error);
+    res.status(500).json({ error: 'Failed to archive tournament' });
   }
 });
 

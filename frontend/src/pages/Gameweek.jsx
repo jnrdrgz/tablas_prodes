@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import html2canvas from 'html2canvas'
+import { toPng } from 'html-to-image'
 import * as api from '../api'
 
 function compareResult(prediction, realResult) {
@@ -58,32 +58,30 @@ export default function Gameweek() {
   const tournamentPointsRef = useRef(null)
   const allTablesRef = useRef(null)
 
-  // Download table as image
+  // Download table as image (same implementation as the public frontend)
   async function downloadAsImage(element, filename) {
     if (!element) return
-
     try {
-      // Force desktop-like width for consistent rendering
-      const originalStyle = element.style.cssText
-      element.style.minWidth = '800px'
-      element.style.width = 'auto'
-
-      const canvas = await html2canvas(element, {
-        backgroundColor: '#1f2937', // gray-800 background
-        scale: 2, // Higher resolution
-        logging: false,
-        useCORS: true,
-        windowWidth: 1920 // Force desktop viewport
+      // Use scrollWidth/scrollHeight so the full table is captured on mobile
+      // (not just the visible overflow area). The style override tells
+      // html-to-image to expand the root element to its full scrollable size.
+      const dataUrl = await toPng(element, {
+        backgroundColor: '#1f2937',
+        pixelRatio: 2,
+        skipFonts: true,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        style: {
+          overflow: 'visible',
+          width: element.scrollWidth + 'px',
+          height: element.scrollHeight + 'px',
+          maxWidth: 'none',
+        },
       })
-
-      // Restore original style
-      element.style.cssText = originalStyle
-
       const link = document.createElement('a')
       link.download = `${filename}.png`
-      link.href = canvas.toDataURL('image/png')
+      link.href = dataUrl
       link.click()
-
       console.log('[GAMEWEEK] Downloaded image:', filename)
     } catch (err) {
       console.error('[GAMEWEEK] Error downloading image:', err)

@@ -38,6 +38,19 @@ npx prisma migrate dev --name init
 npx prisma generate
 ```
 
+### 4. Actualizar despues de cambios (torneos archivados / captura de imagen)
+
+```bash
+# Backend: aplicar la migracion que agrega Tournament.archived
+cd backend
+npx prisma migrate deploy   # en desarrollo: npx prisma migrate dev
+npx prisma generate
+
+# Frontend admin: ahora usa html-to-image (igual que el publico)
+cd ../frontend
+npm install
+```
+
 ## Desarrollo
 
 Correr backend y frontend en terminales separadas:
@@ -161,6 +174,26 @@ Un torneo puede "suscribirse" a otro. Esto significa que:
 - Las predicciones son independientes (cada torneo tiene sus propias predicciones)
 
 Util para tener el mismo fixture con diferentes grupos de amigos.
+
+### Torneos archivados
+
+Desde el admin (`/tournaments` o la pagina del torneo) se puede **Archivar** un torneo:
+
+- Deja de aparecer en el frontend publico (lista y detalle devuelven 404)
+- Sigue visible en el admin, pintado en color ambar con el cartel `ARCHIVADO`
+- No suma en la **Tabla General**, pero si en la **Tabla Historica**
+- Se puede **Desarchivar** en cualquier momento (no se borra nada)
+
+La API expone:
+- `GET /api/tournaments` -> solo activos; `?includeArchived=true` -> todos (lo usa el admin)
+- `PUT /api/tournaments/:id/archive` con body `{ "archived": true|false }`
+- `GET /api/general-table` -> Tabla General (solo activos); `?includeArchived=true` -> Tabla Historica
+
+### Tablas General e Historica
+
+Ambas estan disponibles en el admin y en el publico:
+- `/general` - Tabla General: suma solo torneos NO archivados
+- `/historica` - Tabla Historica: suma todos los torneos, incluidos los archivados
 
 ### Puntuacion
 

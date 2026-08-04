@@ -113,7 +113,7 @@ export default function Home() {
               className="input"
             >
               <option value="">Sin suscripcion (independiente)</option>
-              {tournaments.filter(t => !t.subscribedToId).map(t => (
+              {tournaments.filter(t => !t.subscribedToId && !t.archived).map(t => (
                 <option key={t.id} value={t.id}>
                   Suscribir a: {t.description}
                 </option>
@@ -188,10 +188,21 @@ export default function Home() {
               <Link
                 key={t.id}
                 to={`/tournament/${t.id}`}
-                className="block p-3 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                className={`block p-3 rounded transition-colors ${
+                  t.archived
+                    ? 'bg-amber-900/40 hover:bg-amber-900/60 border border-amber-700'
+                    : 'bg-gray-700 hover:bg-gray-600'
+                }`}
               >
                 <div className="flex justify-between items-center">
-                  <span className="font-medium">{t.description}</span>
+                  <span className="font-medium">
+                    {t.description}
+                    {t.archived && (
+                      <span className="ml-2 text-xs bg-amber-700 text-amber-100 px-2 py-0.5 rounded">
+                        ARCHIVADO
+                      </span>
+                    )}
+                  </span>
                   <span className="text-sm text-gray-400">
                     {t._count.gameweeks} fechas
                     {t.subscribedTo && ` (suscrito a ${t.subscribedTo.description})`}

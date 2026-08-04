@@ -23,9 +23,13 @@ async function request(path, options = {}) {
   return data
 }
 
-// Tournaments
-export const getTournaments = () => request('/tournaments')
-export const getTournament = (id) => request(`/tournaments/${id}`)
+// Tournaments — admin always sees archived ones too
+export const getTournaments = () => request('/tournaments?includeArchived=true')
+export const getTournament = (id) => request(`/tournaments/${id}?includeArchived=true`)
+export const setTournamentArchived = (id, archived) => request(`/tournaments/${id}/archive`, {
+  method: 'PUT',
+  body: JSON.stringify({ archived })
+})
 export const createTournament = (data) => request('/tournaments', {
   method: 'POST',
   body: JSON.stringify(data)
@@ -76,8 +80,9 @@ export const createMapping = (key, value) => request('/mappings', {
 })
 export const deleteMapping = (id) => request(`/mappings/${id}`, { method: 'DELETE' })
 
-// General Table
+// General Table (historic includes archived tournaments)
 export const getGeneralTable = () => request('/general-table')
+export const getHistoricTable = () => request('/general-table?includeArchived=true')
 
 // Debug
 export const debugParsePreview = (whatsappText) => request('/debug/parse-preview', {

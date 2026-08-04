@@ -18,6 +18,9 @@ function App() {
           <Link to="/general" className="text-gray-300 hover:text-white">
             Tabla General Temporada
           </Link>
+          <Link to="/historica" className="text-gray-300 hover:text-white">
+            Tabla Historica
+          </Link>
         </div>
       </nav>
       <main className="container mx-auto px-4">
@@ -26,6 +29,7 @@ function App() {
           <Route path="/tournament/:id" element={<Tournaments />} />
           <Route path="/gameweek/:id" element={<Gameweek />} />
           <Route path="/general" element={<GeneralTable />} />
+          <Route path="/historica" element={<GeneralTable historic />} />
           <Route path="/tournament/:id/evolution" element={<PositionEvolution />} />
         </Routes>
       </main>

@@ -5,11 +5,14 @@ const { calculateGameweekPoints } = require('../utils/points');
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Get general table (points across all tournaments)
+// Get general table (points across all tournaments).
+// Default (tabla general) skips archived tournaments; includeArchived=true is the tabla historica.
 router.get('/', async (req, res) => {
-  console.log('[GENERAL TABLE] Calculating general table across all tournaments');
+  const includeArchived = req.query.includeArchived === 'true';
+  console.log(`[GENERAL TABLE] Calculating general table (includeArchived=${includeArchived})`);
   try {
     const tournaments = await prisma.tournament.findMany({
+      where: includeArchived ? {} : { archived: false },
       include: {
         gameweeks: {
           include: {
