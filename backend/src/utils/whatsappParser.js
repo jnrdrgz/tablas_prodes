@@ -9,96 +9,90 @@
  * Banfield 0-0 Huracán
  * ...
  *
- * Returns array of { predictor: string, results: string[] }
- * where results are like "1-1", "0-2", etc.
+ * Returns { predictions, warnings }
+ *   predictions: [{ predictor: string, results: string[] }]  results are like "1-1", "0-2"
+ *   warnings: [{ predictor, position, score, message }]      double digit scores (probable typos)
  */
+
+// One message: "] Nombre: contenido" up to the "[" that opens the next message.
+// The name is anything after "]" that is not a colon or a bracket, so accented
+// names (Soberón, Villafañe) and phone numbers work the same.
+const MESSAGE_REGEX = /\]([^:\[]+):(.+?)\[/g;
+
+// A score is digits-dash-digits, tolerating spaces around the dash ("1 - 0")
+const SCORE_REGEX = /(\d+)\s*-\s*(\d+)/g;
+
 function parseWhatsappPredictions(text, mappings = {}) {
   console.log('[PARSER] Parsing WhatsApp predictions text');
   console.log('[PARSER] Input length:', text.length);
 
-  // Remove all newlines to work with a single line (like old site does)
-  let processedText = text.replace(/\n/g, '');
-  processedText += '['; // Add trailing bracket for regex matching (like old site)
+  // Collapse everything into a single line (\r included: "." never matches \r)
+  let processedText = text.replace(/\r/g, '').replace(/\n/g, '');
+  processedText += '['; // trailing bracket so the last message also closes
 
-  // Extract names - everything between ] and :
-  const namesRegex = /\].+?:/g;
-  // Extract predictions - everything from 3 alphanumeric chars + : until next [
-  // This captures "xxx: content here["
-  const prodesRegex = /[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]:.+?\[/g;
+  const messages = [...processedText.matchAll(MESSAGE_REGEX)];
+  console.log(`[PARSER] Found ${messages.length} messages`);
 
-  const namesMatches = [...processedText.matchAll(namesRegex)];
-  const prodesMatches = [...processedText.matchAll(prodesRegex)];
+  const predictions = [];
+  const warnings = [];
 
-  console.log(`[PARSER] Found ${namesMatches.length} names, ${prodesMatches.length} prediction sets`);
-
-  const results = [];
-
-  for (let i = 0; i < namesMatches.length; i++) {
-    // Clean name - remove ], :, ~, and trim
-    let name = namesMatches[i][0]
-      .replace(/]/g, '')
-      .replace(/:/g, '')
-      .replace(/~/g, '')
-      .trim();
+  for (const message of messages) {
+    let name = message[1].replace(/~/g, '').trim();
+    const content = message[2];
 
     console.log(`[PARSER] Raw name extracted: "${name}"`);
 
-    // Apply mapping if exists
     if (mappings[name]) {
       console.log(`[PARSER] Mapping "${name}" -> "${mappings[name]}"`);
       name = mappings[name];
     }
 
-    if (i < prodesMatches.length) {
-      const prodeStr = prodesMatches[i][0];
-      console.log(`[PARSER] Raw prode string: "${prodeStr.substring(0, 50)}..."`);
+    const { scores, suspicious } = extractScores(content);
 
-      // IMPORTANT: Extract only the content AFTER the colon
-      // The prodeStr is like "792: Aldosivi 1-0 Defensa..." where 792 is part of phone
-      // We need to skip everything before and including the first ":"
-      const colonIndex = prodeStr.indexOf(':');
-      const contentAfterColon = colonIndex >= 0 ? prodeStr.substring(colonIndex + 1) : prodeStr;
-
-      console.log(`[PARSER] Content after colon: "${contentAfterColon.substring(0, 50)}..."`);
-
-      // Extract scores from the content only (not from the name/number part)
-      const scoreResults = extractScores(contentAfterColon);
-
-      console.log(`[PARSER] ${name}: ${scoreResults.length} predictions -> ${scoreResults.join(', ')}`);
-
-      results.push({
-        predictor: name,
-        results: scoreResults
-      });
+    if (scores.length === 0) {
+      console.log(`[PARSER] Skipping "${name}": message has no scores`);
+      continue;
     }
+
+    console.log(`[PARSER] ${name}: ${scores.length} predictions -> ${scores.join(', ')}`);
+
+    for (const s of suspicious) {
+      const warningText = `${name}: resultado con doble digito "${s.score}" en el partido ${s.position}`;
+      console.warn(`[PARSER] WARNING - ${warningText}`);
+      warnings.push({ predictor: name, position: s.position, score: s.score, message: warningText });
+    }
+
+    predictions.push({ predictor: name, results: scores });
   }
 
-  return results;
+  console.log(`[PARSER] Done: ${predictions.length} prediction sets, ${warnings.length} warnings`);
+
+  return { predictions, warnings };
 }
 
 /**
- * Extract scores from a prediction string (content after the name:)
- * Input should NOT include the name/number part
- * Handles formats like "Team1 1-0 Team2Team3 2-1 Team4["
+ * Extract scores from a message body (content after "Nombre:")
+ * Returns { scores: ["1-0", ...], suspicious: [{ position, score }] }
+ * A score with more than one digit per side is almost always a typo (0-25 instead of 0-2),
+ * so it is reported instead of being silently accepted.
  */
 function extractScores(contentStr) {
-  // Remove the trailing [
-  const cleanStr = contentStr.replace(/\[$/g, '');
-
-  // Extract all single digits (scores are typically 0-9)
-  // This approach extracts digit by digit and pairs them
-  const numbers = cleanStr.replace(/\D/g, '').split('');
-
-  console.log(`[PARSER] Extracted digits: ${numbers.join(',')}`);
-
   const scores = [];
-  for (let i = 0; i < numbers.length; i += 2) {
-    if (numbers[i] !== undefined && numbers[i + 1] !== undefined) {
-      scores.push(`${numbers[i]}-${numbers[i + 1]}`);
+  const suspicious = [];
+
+  for (const match of contentStr.matchAll(SCORE_REGEX)) {
+    const home = match[1];
+    const away = match[2];
+    const score = `${home}-${away}`;
+
+    scores.push(score);
+
+    if (home.length > 1 || away.length > 1) {
+      suspicious.push({ position: scores.length, score });
     }
   }
 
-  return scores;
+  return { scores, suspicious };
 }
 
 /**

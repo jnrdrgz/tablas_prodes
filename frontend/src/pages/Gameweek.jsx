@@ -256,7 +256,7 @@ export default function Gameweek() {
       )}
 
       {error && (
-        <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded mb-4">
+        <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded mb-4 whitespace-pre-line">
           {error}
           <button onClick={() => setError('')} className="float-right">&times;</button>
         </div>

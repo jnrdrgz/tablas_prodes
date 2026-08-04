@@ -68,6 +68,17 @@ Banfield 0-0 Huracán
             Mapeos usados: {result.mappingsUsed}
           </p>
 
+          {result.warnings?.length > 0 && (
+            <div className="bg-yellow-900 border border-yellow-700 text-yellow-100 px-4 py-3 rounded mb-4">
+              <p className="font-bold mb-1">
+                Resultados con doble digito ({result.warnings.length}) - la carga se va a rechazar hasta corregirlos:
+              </p>
+              <ul className="list-disc list-inside text-sm">
+                {result.warnings.map((w, i) => <li key={i}>{w.message}</li>)}
+              </ul>
+            </div>
+          )}
+
           {result.parsed.length === 0 ? (
             <p className="text-yellow-400">No se encontraron predicciones en el texto</p>
           ) : (

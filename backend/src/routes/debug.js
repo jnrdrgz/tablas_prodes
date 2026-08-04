@@ -21,16 +21,18 @@ router.post('/parse-preview', async (req, res) => {
     console.log('[DEBUG] Loaded mappings:', Object.keys(mappingDict).length);
 
     // Parse without saving
-    const parsed = parseWhatsappPredictions(whatsappText, mappingDict);
+    const { predictions: parsed, warnings } = parseWhatsappPredictions(whatsappText, mappingDict);
 
     console.log('[DEBUG] Parse result:');
     parsed.forEach(p => {
       console.log(`[DEBUG]   ${p.predictor}: ${p.results.join(', ')}`);
     });
+    warnings.forEach(w => console.log(`[DEBUG]   WARNING ${w.message}`));
 
     res.json({
       success: true,
       parsed,
+      warnings,
       mappingsUsed: Object.keys(mappingDict).length
     });
   } catch (error) {

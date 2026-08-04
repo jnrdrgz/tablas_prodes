@@ -23,6 +23,27 @@ router.post('/bulk', async (req, res) => {
       return res.status(404).json({ error: 'Gameweek not found' });
     }
 
+    // Get all mappings
+    const mappings = await prisma.mapping.findMany();
+    const mappingDict = {};
+    for (const m of mappings) {
+      mappingDict[m.key] = m.value;
+    }
+
+    // Parse WhatsApp text (nothing is saved until it parses clean)
+    const { predictions: parsed, warnings } = parseWhatsappPredictions(whatsappText, mappingDict);
+    console.log(`[PREDICTIONS] Parsed ${parsed.length} prediction sets, ${warnings.length} warnings`);
+
+    if (warnings.length > 0) {
+      console.warn(`[PREDICTIONS] Upload rejected for gameweek ${gameweekId}: ${warnings.length} double digit scores`);
+      warnings.forEach(w => console.warn(`[PREDICTIONS]   ${w.message}`));
+      return res.status(400).json({
+        error: 'No se cargo nada. Hay resultados con doble digito (probable error de tipeo). Corregilos en el texto y volve a subir:\n' +
+          warnings.map(w => `- ${w.message}`).join('\n'),
+        warnings
+      });
+    }
+
     // Save raw WhatsApp input for audit/backup
     const savedInput = await prisma.whatsappInput.create({
       data: {
@@ -32,17 +53,6 @@ router.post('/bulk', async (req, res) => {
       }
     });
     console.log(`[PREDICTIONS] Saved raw WhatsApp input ${savedInput.id} for tournament ${gameweek.tournamentId}`);
-
-    // Get all mappings
-    const mappings = await prisma.mapping.findMany();
-    const mappingDict = {};
-    for (const m of mappings) {
-      mappingDict[m.key] = m.value;
-    }
-
-    // Parse WhatsApp text
-    const parsed = parseWhatsappPredictions(whatsappText, mappingDict);
-    console.log(`[PREDICTIONS] Parsed ${parsed.length} prediction sets`);
 
     let totalCreated = 0;
     let totalUpdated = 0;
