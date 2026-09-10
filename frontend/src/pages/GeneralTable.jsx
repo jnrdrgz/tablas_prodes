@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { getGeneralTable, getHistoricTable } from '../api'
 
+// Tabla General / Tabla Historica, shown as tabs inside Otras Tablas.
 // historic = true includes archived tournaments
 export default function GeneralTable({ historic = false }) {
   const [table, setTable] = useState(null)
@@ -27,20 +27,8 @@ export default function GeneralTable({ historic = false }) {
     }
   }
 
-  const tabClass = (active) =>
-    `px-4 py-2 rounded-t font-medium ${active ? 'bg-gray-800 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'}`
-
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">
-        {historic ? 'Tabla Historica' : 'Tabla General'}
-      </h1>
-
-      <div className="flex gap-1 mb-4">
-        <Link to="/general" className={tabClass(!historic)}>Tabla General</Link>
-        <Link to="/historica" className={tabClass(historic)}>Tabla Historica</Link>
-      </div>
-
       <p className="text-sm text-gray-400 mb-4">
         {historic
           ? 'Incluye todos los torneos, tambien los archivados.'

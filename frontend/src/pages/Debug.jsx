@@ -1,8 +1,23 @@
 import { useState } from 'react'
 import * as api from '../api'
 
+const PLACEHOLDERS = {
+  whatsapp: `[1/21, 21:39] PMolina: Aldosivi 1-1 Defensa
+Banfield 0-2 Huracán
+Unión 1-1 Platense
+[1/21, 23:13] +54 9 381 574-8792: Aldosivi 1-0 Defensa
+Banfield 0-0 Huracán
+...`,
+  wpweb: `[15:19, 9/4/2026] Juan Rodríguez: Estudiantes RC 0-1 Sarmiento
+Belgrano 1-0 Huracán
+[16:17, 9/4/2026] +54 9 3512 87-0987: Estudiantes RC 0-0 Sarmiento
+Belgrano 1-0 Huracán
+...`
+}
+
 export default function Debug() {
   const [whatsappText, setWhatsappText] = useState('')
+  const [format, setFormat] = useState('whatsapp')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -13,7 +28,8 @@ export default function Debug() {
     try {
       setLoading(true)
       setError('')
-      const data = await api.debugParsePreview(whatsappText)
+      console.log(`[DEBUG] Testing parser (format=${format})`)
+      const data = await api.debugParsePreview(whatsappText, format)
       setResult(data)
       console.log('[DEBUG] Parse result:', data)
     } catch (err) {
@@ -34,16 +50,23 @@ export default function Debug() {
           Pega el texto de WhatsApp para ver como se parsearia sin guardarlo en la base de datos.
         </p>
 
+        <label className="flex items-center gap-2 mb-4 text-sm">
+          Parser:
+          <select
+            value={format}
+            onChange={(e) => { setFormat(e.target.value); setResult(null) }}
+            className="input w-auto text-sm"
+          >
+            <option value="whatsapp">WhatsApp</option>
+            <option value="wpweb">WP Web</option>
+          </select>
+        </label>
+
         <textarea
           value={whatsappText}
           onChange={(e) => setWhatsappText(e.target.value)}
           className="textarea h-64 mb-4 font-mono text-xs"
-          placeholder={`[1/21, 21:39] PMolina: Aldosivi 1-1 Defensa
-Banfield 0-2 Huracán
-Unión 1-1 Platense
-[1/21, 23:13] +54 9 381 574-8792: Aldosivi 1-0 Defensa
-Banfield 0-0 Huracán
-...`}
+          placeholder={PLACEHOLDERS[format]}
         />
 
         <button

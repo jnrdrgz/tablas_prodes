@@ -161,6 +161,19 @@ server {
    ...
    ```
 
+   Si los mensajes se copian desde **WhatsApp Web**, usar el boton **Cargar Predicciones (WP Web)**. Ese formato se lee linea por linea: cada mensaje empieza con `[hora, fecha] Nombre:` y las lineas siguientes son parte de ese mensaje:
+   ```
+   [15:19, 9/4/2026] Juan Rodríguez: Boca 2-1 River
+   Racing 1-0 Independiente
+   [16:17, 9/4/2026] +54 9 3512 87-0987: Boca 1-1 River
+   Racing 2-1 Independiente
+   ```
+   Los mensajes sin resultados (charla del grupo) se ignoran. Si una persona manda varios mensajes con resultados, se toma solo el que tiene mas resultados (su prode); si empatan, el ultimo. Asi un "vamos 2-0" mandado despues no pisa el primer partido.
+
+   **Cargar faltantes con 9-9** (checkbox, apagado por defecto): si se activa, despues de cargar, todos los participantes que aparecen en la tabla de puntos del torneo (hasta esta fecha) y no tienen ninguna prediccion en esta fecha quedan con `9-9` en todos los partidos (prode no enviado / invalido / anulado). No toca a quien ya cargo predicciones en la fecha.
+
+   **Validar antes de cargar** (checkbox, apagado por defecto): el boton pasa a decir **Validar** y, en vez de cargar, muestra una tabla con lo que se va a cargar (resultado por partido de cada participante, quien ya tenia prode y se actualiza, a quien le faltan o sobran resultados, y quienes se completarian con 9-9). No se guarda nada hasta apretar **Confirmar carga**. Si se cambia el texto o alguna opcion, hay que volver a validar.
+
 6. **Cargar resultados** - Cuando terminen los partidos, cargar los resultados reales
 
 7. **Ver tabla** - La tabla de puntos se calcula automaticamente
@@ -194,6 +207,21 @@ La API expone:
 Ambas estan disponibles en el admin y en el publico:
 - `/general` - Tabla General: suma solo torneos NO archivados
 - `/historica` - Tabla Historica: suma todos los torneos, incluidos los archivados
+
+### Otras Tablas (solo admin)
+
+En el admin el link **Otras Tablas** (`/tablas/general`) junta todas las tablas en pestañas. `/general` y `/historica` redirigen ahi.
+
+- **Tabla General** y **Tabla Historica**: las de siempre.
+- **General sin Plenos**: solo torneos activos. Cada acierto de ganador/empate vale 1 punto, sea pleno o no.
+- **Plenos Seguidos** (historico): la racha mas larga de partidos seguidos con resultado exacto de cada participante.
+- **Simples Seguidos** (historico): la racha mas larga de partidos seguidos acertando al menos ganador/empate (un pleno tambien cuenta).
+- **Puntos en una Fecha** (historico): la mejor fecha de cada participante (puntos, desempate por plenos).
+- **Puntos por Equipo** (historico): para cada equipo, quien sumo mas puntos en los partidos de ese equipo. Formato `[equipo] [participante] [puntos]`. Los equipos salen de la descripcion del partido (`Boca - River`); se agrupan sin importar tildes ni mayusculas.
+
+Reglas de las rachas: se recorren los partidos en orden (fecha por fecha, partido por partido) de los torneos que jugo cada participante. Un 9-9 o no mandar prode corta la racha; los partidos sin resultado cargado (o anulados con 9-9) se saltean.
+
+La API: `GET /api/other-tables` devuelve `{ sinPlenos, plenosSeguidos, simplesSeguidos, puntosEnUnaFecha, puntosPorEquipo }`.
 
 ### Puntuacion
 
@@ -229,7 +257,7 @@ Lee el archivo `mappings.txt` en la raiz del proyecto y carga los mapeos. Format
 
 ### Debug del parser
 
-Ir a `/debug` en el frontend para probar el parser de WhatsApp sin guardar datos.
+Ir a `/debug` en el frontend para probar el parser de WhatsApp sin guardar datos. El selector **Parser** permite elegir entre el formato WhatsApp y el de WP Web.
 
 ## Notas
 

@@ -1,11 +1,11 @@
-import { Routes, Route, Link } from 'react-router-dom'
+import { Routes, Route, Link, Navigate } from 'react-router-dom'
 import Home from './pages/Home'
 import Tournaments from './pages/Tournaments'
 import Tournament from './pages/Tournament'
 import Gameweek from './pages/Gameweek'
 import Debug from './pages/Debug'
 import WhatsappInputs from './pages/WhatsappInputs'
-import GeneralTable from './pages/GeneralTable'
+import OtherTables from './pages/OtherTables'
 import FraudAnalysis from './pages/FraudAnalysis'
 
 function App() {
@@ -19,11 +19,8 @@ function App() {
           <Link to="/tournaments" className="text-gray-300 hover:text-white">
             Torneos
           </Link>
-          <Link to="/general" className="text-gray-300 hover:text-white">
-            Tabla General
-          </Link>
-          <Link to="/historica" className="text-gray-300 hover:text-white">
-            Tabla Historica
+          <Link to="/tablas/general" className="text-gray-300 hover:text-white">
+            Otras Tablas
           </Link>
           <Link to="/inputs" className="text-gray-300 hover:text-white">
             Historial
@@ -39,8 +36,10 @@ function App() {
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/tournament/:id" element={<Tournament />} />
           <Route path="/gameweek/:id" element={<Gameweek />} />
-          <Route path="/general" element={<GeneralTable />} />
-          <Route path="/historica" element={<GeneralTable historic />} />
+          <Route path="/tablas/:tab" element={<OtherTables />} />
+          <Route path="/tablas" element={<Navigate to="/tablas/general" replace />} />
+          <Route path="/general" element={<Navigate to="/tablas/general" replace />} />
+          <Route path="/historica" element={<Navigate to="/tablas/historica" replace />} />
           <Route path="/fraud/:id" element={<FraudAnalysis />} />
           <Route path="/debug" element={<Debug />} />
           <Route path="/inputs" element={<WhatsappInputs />} />
