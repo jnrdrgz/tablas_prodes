@@ -64,6 +64,80 @@ function RankingTable({ note, rows, columns, showPosition = true }) {
   )
 }
 
+// For a selected fecha, what the best predictor(s) of each team predicted in that team's match
+function TeamLeaderPredictions({ gameweeks }) {
+  const [gameweekId, setGameweekId] = useState(gameweeks[0]?.id ?? null)
+  const gameweek = gameweeks.find(g => g.id === gameweekId)
+
+  function selectGameweek(id) {
+    console.log(`[OTHER TABLES] Puntos por equipo: selected gameweek ${id}`)
+    setGameweekId(id)
+  }
+
+  if (gameweeks.length === 0) return null
+
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-2">Que predijo el mejor de cada equipo</h2>
+      <p className="text-sm text-gray-400 mb-4">
+        Para cada partido de la fecha, la prediccion del que mas puntos sumo con cada equipo (el de la tabla de arriba).
+      </p>
+
+      <select
+        className="input mb-4 w-full sm:w-auto"
+        value={gameweekId ?? ''}
+        onChange={e => selectGameweek(Number(e.target.value))}
+      >
+        {gameweeks.map(g => (
+          <option key={g.id} value={g.id}>{g.label}</option>
+        ))}
+      </select>
+
+      {gameweek && (gameweek.matches.length === 0 ? (
+        <div className="card text-center py-8">
+          <p className="text-gray-400">La fecha no tiene partidos</p>
+        </div>
+      ) : (
+        <div className="card overflow-x-auto">
+          <table className="table-dark">
+            <thead>
+              <tr>
+                <th className="text-left">Partido</th>
+                <th>Resultado</th>
+                <th className="text-left">Equipo</th>
+                <th className="text-left">Mejor participante</th>
+                <th>Pts equipo</th>
+                <th>Prediccion</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gameweek.matches.flatMap(match => {
+                const equipos = match.equipos.length > 0 ? match.equipos : [null]
+                return equipos.flatMap((team, teamIndex) => {
+                  const predicciones = team && team.predicciones.length > 0 ? team.predicciones : [null]
+                  return predicciones.map((prediction, predictionIndex) => {
+                    const isFirstRowOfMatch = teamIndex === 0 && predictionIndex === 0
+                    return (
+                      <tr key={`${match.id}-${teamIndex}-${predictionIndex}`}>
+                        <td className="text-left font-medium">{isFirstRowOfMatch ? match.description : ''}</td>
+                        <td>{isFirstRowOfMatch ? (match.result || '-') : ''}</td>
+                        <td className="text-left">{predictionIndex === 0 && team ? team.equipo : ''}</td>
+                        <td className="text-left">{prediction ? prediction.predictor : '-'}</td>
+                        <td>{predictionIndex === 0 && team ? team.puntos : ''}</td>
+                        <td className="font-bold">{prediction ? (prediction.result || 'No mando') : '-'}</td>
+                      </tr>
+                    )
+                  })
+                })
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function OtherTableContent({ tab, data }) {
   switch (tab) {
     case 'sin-plenos':
@@ -106,16 +180,19 @@ function OtherTableContent({ tab, data }) {
       )
     case 'puntos-equipo':
       return (
-        <RankingTable
-          note="Historico (incluye archivados). Para cada equipo, quien sumo mas puntos en los partidos de ese equipo. Si hay empate aparecen todos."
-          rows={data.puntosPorEquipo}
-          showPosition={false}
-          columns={[
-            { header: 'Equipo', value: r => r.equipo, left: true },
-            { header: 'Participante', value: r => r.participantes.join(', '), left: true },
-            { header: 'Pts', value: r => r.puntos, bold: true }
-          ]}
-        />
+        <div className="space-y-8">
+          <RankingTable
+            note="Historico (incluye archivados). Para cada equipo, quien sumo mas puntos en los partidos de ese equipo. Si hay empate aparecen todos."
+            rows={data.puntosPorEquipo}
+            showPosition={false}
+            columns={[
+              { header: 'Equipo', value: r => r.equipo, left: true },
+              { header: 'Participante', value: r => r.participantes.join(', '), left: true },
+              { header: 'Pts', value: r => r.puntos, bold: true }
+            ]}
+          />
+          <TeamLeaderPredictions gameweeks={data.puntosPorEquipoFechas} />
+        </div>
       )
     default:
       return null

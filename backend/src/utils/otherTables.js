@@ -170,17 +170,39 @@ function splitTeams(description) {
 }
 
 // Groups the same team written differently across fechas ("Vélez" / "velez")
+function normalizeTeamText(team) {
+  return team.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+// Teams written with different names across fechas. Only used by Puntos por Equipo for now
+// (team names are not normalized in the database). Keys are normalized, values are the display name.
+const TEAM_ALIASES = {
+  'estudiantes lp': 'Estudiantes LP',
+  'estudiantes': 'Estudiantes LP',
+  'gimnasia lp': 'Gimnasia LP',
+  'gimnasia': 'Gimnasia LP',
+  'gimnasia (m)': 'Gimnasia (M)',
+  'gimnasia mza': 'Gimnasia (M)',
+  'gimnasia m': 'Gimnasia (M)'
+};
+
+// Canonical team name: the alias if there is one, otherwise the name as written
+function canonicalTeam(team) {
+  return TEAM_ALIASES[normalizeTeamText(team)] || team;
+}
+
 function teamKey(team) {
-  return team.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  return normalizeTeamText(canonicalTeam(team));
 }
 
 /**
- * For each team, the predictor who made the most points in the matches that team played.
- * Ties list every leader. Returns [{ equipo, participantes: [...], puntos }] sorted by team.
+ * Points each predictor made in the finished matches of each team.
+ * Returns { [teamKey]: { equipo, pointsByPredictor } }
  */
-function calculateBestPredictorPerTeam(tournaments) {
+function calculatePointsByTeam(tournaments) {
   const teams = {};
   const unsplittable = new Set();
+  const aliased = new Set();
 
   for (const tournament of tournaments) {
     for (const gameweek of tournament.gameweeks) {
@@ -194,8 +216,11 @@ function calculateBestPredictorPerTeam(tournaments) {
         }
 
         for (const team of matchTeams) {
+          const equipo = canonicalTeam(team);
+          if (equipo !== team) aliased.add(`${team} -> ${equipo}`);
+
           const key = teamKey(team);
-          if (!teams[key]) teams[key] = { equipo: team, pointsByPredictor: {} };
+          if (!teams[key]) teams[key] = { equipo, pointsByPredictor: {} };
 
           const pointsByPredictor = teams[key].pointsByPredictor;
           for (const prediction of match.predictions) {
@@ -210,20 +235,75 @@ function calculateBestPredictorPerTeam(tournaments) {
   if (unsplittable.size > 0) {
     console.warn(`[OTHER TABLES] Puntos por equipo: skipped ${unsplittable.size} match descriptions without "Equipo - Equipo" format: ${[...unsplittable].join(' | ')}`);
   }
+  if (aliased.size > 0) {
+    console.log(`[OTHER TABLES] Puntos por equipo: merged team aliases: ${[...aliased].join(' | ')}`);
+  }
 
-  const rows = Object.values(teams)
-    .map(({ equipo, pointsByPredictor }) => {
-      const puntos = Math.max(0, ...Object.values(pointsByPredictor));
-      const participantes = Object.keys(pointsByPredictor)
-        .filter(predictor => pointsByPredictor[predictor] === puntos)
-        .sort();
-      return { equipo, participantes, puntos };
-    })
+  return teams;
+}
+
+// The predictors with the most points for a team (ties list all). puntos 0 = nobody scored yet.
+function teamLeaders({ equipo, pointsByPredictor }) {
+  const puntos = Math.max(0, ...Object.values(pointsByPredictor));
+  const participantes = Object.keys(pointsByPredictor)
+    .filter(predictor => pointsByPredictor[predictor] === puntos)
+    .sort();
+  return { equipo, participantes, puntos };
+}
+
+/**
+ * For each team, the predictor who made the most points in the matches that team played.
+ * Ties list every leader. Returns [{ equipo, participantes: [...], puntos }] sorted by team.
+ */
+function calculateBestPredictorPerTeam(tournaments) {
+  const rows = Object.values(calculatePointsByTeam(tournaments))
+    .map(teamLeaders)
     .filter(row => row.puntos > 0)
     .sort((a, b) => a.equipo.localeCompare(b.equipo));
 
   console.log(`[OTHER TABLES] Puntos por equipo: ${rows.length} teams`);
   return rows;
+}
+
+/**
+ * For every gameweek (newest first), each match with what the best predictor(s) of each of its
+ * two teams predicted. A leader without a prediction for that match comes out with result null.
+ * Returns [{ id, label, matches: [{ id, description, result, equipos: [{ equipo, puntos, predicciones: [{ predictor, result }] }] }] }]
+ */
+function calculateTeamLeaderPredictionsByGameweek(tournaments) {
+  const leadersByTeam = {};
+  for (const [key, team] of Object.entries(calculatePointsByTeam(tournaments))) {
+    leadersByTeam[key] = teamLeaders(team);
+  }
+
+  const gameweeks = tournaments
+    .flatMap(tournament => tournament.gameweeks.map(gameweek => ({ gameweek, tournament })))
+    .sort((a, b) => b.gameweek.id - a.gameweek.id)
+    .map(({ gameweek, tournament }) => ({
+      id: gameweek.id,
+      label: gameweekLabel(tournament, gameweek),
+      matches: gameweek.matches.map(match => {
+        const predictionByPlayer = new Map(match.predictions.map(p => [p.predictor, p.result]));
+        const matchTeams = splitTeams(match.description) || [];
+
+        const equipos = matchTeams.map(team => {
+          const leaders = leadersByTeam[teamKey(team)];
+          const hasLeaders = leaders && leaders.puntos > 0;
+          return {
+            equipo: canonicalTeam(team),
+            puntos: hasLeaders ? leaders.puntos : 0,
+            predicciones: hasLeaders
+              ? leaders.participantes.map(predictor => ({ predictor, result: predictionByPlayer.get(predictor) || null }))
+              : []
+          };
+        });
+
+        return { id: match.id, description: match.description, result: match.result, equipos };
+      })
+    }));
+
+  console.log(`[OTHER TABLES] Puntos por equipo por fecha: ${gameweeks.length} gameweeks`);
+  return gameweeks;
 }
 
 module.exports = {
@@ -232,5 +312,6 @@ module.exports = {
   calculatePlenoStreaks,
   calculateHitStreaks,
   calculateBestGameweekPerPredictor,
-  calculateBestPredictorPerTeam
+  calculateBestPredictorPerTeam,
+  calculateTeamLeaderPredictionsByGameweek
 };

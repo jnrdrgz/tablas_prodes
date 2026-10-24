@@ -6,7 +6,8 @@ const {
   calculatePlenoStreaks,
   calculateHitStreaks,
   calculateBestGameweekPerPredictor,
-  calculateBestPredictorPerTeam
+  calculateBestPredictorPerTeam,
+  calculateTeamLeaderPredictionsByGameweek
 } = require('../utils/otherTables');
 
 const router = express.Router();
@@ -42,7 +43,8 @@ router.get('/', async (req, res) => {
       plenosSeguidos: calculatePlenoStreaks(timelines),
       simplesSeguidos: calculateHitStreaks(timelines),
       puntosEnUnaFecha: calculateBestGameweekPerPredictor(tournaments),
-      puntosPorEquipo: calculateBestPredictorPerTeam(tournaments)
+      puntosPorEquipo: calculateBestPredictorPerTeam(tournaments),
+      puntosPorEquipoFechas: calculateTeamLeaderPredictionsByGameweek(tournaments)
     });
     console.log('[OTHER TABLES] Done');
   } catch (error) {

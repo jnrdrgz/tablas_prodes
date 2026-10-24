@@ -217,11 +217,11 @@ En el admin el link **Otras Tablas** (`/tablas/general`) junta todas las tablas 
 - **Plenos Seguidos** (historico): la racha mas larga de partidos seguidos con resultado exacto de cada participante.
 - **Simples Seguidos** (historico): la racha mas larga de partidos seguidos acertando al menos ganador/empate (un pleno tambien cuenta).
 - **Puntos en una Fecha** (historico): la mejor fecha de cada participante (puntos, desempate por plenos).
-- **Puntos por Equipo** (historico): para cada equipo, quien sumo mas puntos en los partidos de ese equipo. Formato `[equipo] [participante] [puntos]`. Los equipos salen de la descripcion del partido (`Boca - River`); se agrupan sin importar tildes ni mayusculas.
+- **Puntos por Equipo** (historico): para cada equipo, quien sumo mas puntos en los partidos de ese equipo. Formato `[equipo] [participante] [puntos]`. Los equipos salen de la descripcion del partido (`Boca - River`); se agrupan sin importar tildes ni mayusculas. Algunos nombres distintos se unifican solo en esta tabla (`TEAM_ALIASES` en `backend/src/utils/otherTables.js`): `Estudiantes` = `Estudiantes LP`, `Gimnasia` = `Gimnasia LP`, `Gimnasia (M)` = `Gimnasia Mza` = `Gimnasia M`. Abajo hay un selector de fecha que muestra, para cada partido, que predijo el mejor participante de cada uno de los dos equipos.
 
 Reglas de las rachas: se recorren los partidos en orden (fecha por fecha, partido por partido) de los torneos que jugo cada participante. Un 9-9 o no mandar prode corta la racha; los partidos sin resultado cargado (o anulados con 9-9) se saltean.
 
-La API: `GET /api/other-tables` devuelve `{ sinPlenos, plenosSeguidos, simplesSeguidos, puntosEnUnaFecha, puntosPorEquipo }`.
+La API: `GET /api/other-tables` devuelve `{ sinPlenos, plenosSeguidos, simplesSeguidos, puntosEnUnaFecha, puntosPorEquipo, puntosPorEquipoFechas }`.
 
 ### Puntuacion
 
