@@ -106,8 +106,6 @@ async function buildLiveTournament(tournamentId) {
       predictor,
       gameweekPoints: gwLive.puntos,
       provisionalPoints: provisional,
-      gameweekPlenos: gwLive.plenos,
-      gameweekGoles: gwLive.goles,
       official: totalOfficial,
       // used for sorting the live table
       puntos: totalOfficial.puntos + provisional,
@@ -126,8 +124,9 @@ async function buildLiveTournament(tournamentId) {
     predictor: row.predictor,
     gameweekPoints: row.gameweekPoints,
     provisionalPoints: row.provisionalPoints,
-    gameweekPlenos: row.gameweekPlenos,
-    gameweekGoles: row.gameweekGoles,
+    // tournament totals (incl. ESPN scores), they are the tiebreakers
+    plenos: row.plenos,
+    goles: row.goles,
     total: row.puntos,
     // positive = moved up because of ESPN (not yet official) scores
     positionChange: officialOrder.indexOf(row.predictor) - index

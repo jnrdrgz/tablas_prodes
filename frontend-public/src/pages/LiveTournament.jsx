@@ -153,8 +153,8 @@ function LiveTable({ standings, settings }) {
             <th className="px-2 py-2"></th>
             <th className="px-2 py-2 text-left">Jugador</th>
             <th className="px-2 py-2" title="Puntos en esta fecha (incluye ESPN)">Fecha</th>
-            <th className="px-2 py-2">Plenos</th>
-            <th className="px-2 py-2" title="Goles de los plenos (desempate)">Goles</th>
+            <th className="px-2 py-2" title="Plenos del torneo (desempate)">Plenos</th>
+            <th className="px-2 py-2" title="Goles de los plenos del torneo (desempate)">Goles</th>
             <th className="px-2 py-2">Total</th>
           </tr>
         </thead>
@@ -168,8 +168,8 @@ function LiveTable({ standings, settings }) {
                 {row.gameweekPoints}
                 {row.provisionalPoints > 0 && <span className="text-green-400 text-xs"> (+{row.provisionalPoints})</span>}
               </td>
-              <td className="px-2 py-1.5 text-center">{row.gameweekPlenos}</td>
-              <td className="px-2 py-1.5 text-center">{row.gameweekGoles}</td>
+              <td className="px-2 py-1.5 text-center">{row.plenos}</td>
+              <td className="px-2 py-1.5 text-center">{row.goles}</td>
               <td className="px-2 py-1.5 text-center font-bold text-base">{row.total}</td>
             </tr>
           ))}
