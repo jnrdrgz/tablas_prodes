@@ -134,7 +134,16 @@ function PositionChange({ value }) {
   return <span className="text-gray-500">=</span>
 }
 
-function LiveTable({ standings }) {
+// same zone colors as the gameweek page: tournament.settings.greenCount / redCount
+function LiveTable({ standings, settings }) {
+  const greenCount = settings?.greenCount ?? 1
+  const redCount = settings?.redCount ?? 2
+  const rowClass = index => {
+    if (index < greenCount) return 'bg-green-900'
+    if (index >= standings.length - redCount) return 'bg-red-900'
+    return ''
+  }
+
   return (
     <div className="card overflow-x-auto p-0">
       <table className="w-full text-sm">
@@ -145,12 +154,13 @@ function LiveTable({ standings }) {
             <th className="px-2 py-2 text-left">Jugador</th>
             <th className="px-2 py-2" title="Puntos en esta fecha (incluye ESPN)">Fecha</th>
             <th className="px-2 py-2">Plenos</th>
+            <th className="px-2 py-2" title="Goles de los plenos (desempate)">Goles</th>
             <th className="px-2 py-2">Total</th>
           </tr>
         </thead>
         <tbody>
           {standings.map((row, i) => (
-            <tr key={row.predictor} className={`border-t border-gray-700 ${i === 0 ? 'bg-brand-900/40' : ''}`}>
+            <tr key={row.predictor} className={`border-t border-gray-700 ${rowClass(i)}`}>
               <td className="px-2 py-1.5 text-center font-bold">{row.position}</td>
               <td className="px-2 py-1.5 text-center text-xs"><PositionChange value={row.positionChange} /></td>
               <td className="px-2 py-1.5">{row.predictor}</td>
@@ -159,6 +169,7 @@ function LiveTable({ standings }) {
                 {row.provisionalPoints > 0 && <span className="text-green-400 text-xs"> (+{row.provisionalPoints})</span>}
               </td>
               <td className="px-2 py-1.5 text-center">{row.gameweekPlenos}</td>
+              <td className="px-2 py-1.5 text-center">{row.gameweekGoles}</td>
               <td className="px-2 py-1.5 text-center font-bold text-base">{row.total}</td>
             </tr>
           ))}
@@ -298,7 +309,7 @@ export default function LiveTournament() {
 
             <div className={`lg:col-span-3 ${mobileTab === 'table' ? '' : 'hidden'} lg:block`}>
               <h2 className="font-bebas text-2xl tracking-wider mb-3">Tabla en vivo</h2>
-              <LiveTable standings={data.standings} />
+              <LiveTable standings={data.standings} settings={data.tournament.settings} />
               <p className="text-xs text-gray-400 mt-2">
                 Puntos provisorios: los partidos sin resultado cargado cuentan con el marcador de ESPN.
                 <span className="text-green-400"> (+n)</span> = puntos que vienen de ESPN.

@@ -67,7 +67,7 @@ function resolveMatch(match) {
 async function buildLiveTournament(tournamentId) {
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },
-    select: { id: true, description: true, archived: true, subscribedToId: true }
+    select: { id: true, description: true, archived: true, subscribedToId: true, settings: true }
   });
   if (!tournament) return null;
 
@@ -107,6 +107,7 @@ async function buildLiveTournament(tournamentId) {
       gameweekPoints: gwLive.puntos,
       provisionalPoints: provisional,
       gameweekPlenos: gwLive.plenos,
+      gameweekGoles: gwLive.goles,
       official: totalOfficial,
       // used for sorting the live table
       puntos: totalOfficial.puntos + provisional,
@@ -126,6 +127,7 @@ async function buildLiveTournament(tournamentId) {
     gameweekPoints: row.gameweekPoints,
     provisionalPoints: row.provisionalPoints,
     gameweekPlenos: row.gameweekPlenos,
+    gameweekGoles: row.gameweekGoles,
     total: row.puntos,
     // positive = moved up because of ESPN (not yet official) scores
     positionChange: officialOrder.indexOf(row.predictor) - index
