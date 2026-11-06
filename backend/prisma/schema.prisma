@@ -37,9 +37,14 @@ model Match {
   gameweek    Gameweek     @relation(fields: [gameweekId], references: [id], onDelete: Cascade)
   description String
   result      String?
+  // ESPN link for live scores. espnDate is the YYYYMMDD scoreboard day the event was found on
+  espnEventId String?
+  espnDate    String?
   predictions Prediction[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+
+  @@index([espnEventId])
 }
 
 model Prediction {

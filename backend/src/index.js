@@ -19,6 +19,9 @@ const whatsappInputsRouter = require('./routes/whatsappInputs');
 const generalTableRouter = require('./routes/generalTable');
 const fraudAnalysisRouter = require('./routes/fraudAnalysis');
 const otherTablesRouter = require('./routes/otherTables');
+const espnRouter = require('./routes/espn');
+const liveRouter = require('./routes/live');
+const { startLivePoller, stopLivePoller } = require('./utils/livePoller');
 
 app.use('/api/tournaments', tournamentsRouter);
 app.use('/api/gameweeks', gameweeksRouter);
@@ -30,6 +33,8 @@ app.use('/api/whatsapp-inputs', whatsappInputsRouter);
 app.use('/api/general-table', generalTableRouter);
 app.use('/api/fraud-analysis', fraudAnalysisRouter);
 app.use('/api/other-tables', otherTablesRouter);
+app.use('/api/espn', espnRouter);
+app.use('/api/live', liveRouter);
 
 app.get('/api/health', (req, res) => {
   console.log('[HEALTH] Health check requested');
@@ -40,10 +45,12 @@ const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, () => {
   console.log(`[SERVER] Tablador backend running on port ${PORT}`);
+  startLivePoller();
 });
 
 process.on('SIGINT', async () => {
   console.log('[SERVER] Shutting down...');
+  stopLivePoller();
   await prisma.$disconnect();
   process.exit(0);
 });

@@ -29,3 +29,7 @@ export const getGameweekPoints = (id) => request(`/gameweeks/${id}/points`)
 export const getGeneralTable = () => request('/general-table')
 export const getHistoricTable = () => request('/general-table?includeArchived=true')
 export const getTournamentEvolution = (id) => request(`/tournaments/${id}/position-evolution`)
+
+// Live (ESPN scores + live points)
+export const getLiveTournaments = () => request('/live/tournaments')
+export const getLiveTournament = (id) => request(`/live/tournaments/${id}`)

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { toPng } from 'html-to-image'
 import * as api from '../api'
+import EspnLinker from './EspnLinker'
 
 function compareResult(prediction, realResult) {
   if (!prediction || !realResult || prediction === '9-9' || realResult === '9-9') {
@@ -109,6 +110,7 @@ export default function Gameweek() {
   // Dry run result shown for confirmation; cleared whenever the text or options change
   const [uploadPreview, setUploadPreview] = useState(null)
   const [showResultsForm, setShowResultsForm] = useState(false)
+  const [showEspnLinker, setShowEspnLinker] = useState(false)
   const [predictorsOrder, setPredictorsOrder] = useState('alpha')
 
   const isSubscribed = gameweek?.tournament?.subscribedToId != null
@@ -385,6 +387,14 @@ export default function Gameweek() {
             >
               {showResultsForm ? 'Cerrar' : 'Cargar Resultados'}
             </button>
+            {gameweek.matches.length > 0 && (
+              <button
+                onClick={() => setShowEspnLinker(!showEspnLinker)}
+                className="btn btn-secondary"
+              >
+                {showEspnLinker ? 'Cerrar' : `Vincular ESPN (${gameweek.matches.filter(m => m.espnEventId).length}/${gameweek.matches.length})`}
+              </button>
+            )}
           </>
         )}
         <button
@@ -442,6 +452,10 @@ export default function Gameweek() {
             <button type="submit" className="btn btn-success">Actualizar Resultados</button>
           </form>
         </div>
+      )}
+
+      {showEspnLinker && !isSubscribed && (
+        <EspnLinker gameweek={gameweek} onSaved={loadData} />
       )}
 
       {predictionsFormat && (

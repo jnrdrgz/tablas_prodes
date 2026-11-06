@@ -51,6 +51,26 @@ cd ../frontend
 npm install
 ```
 
+### 5. Actualizar para En Vivo (ESPN)
+
+No hay dependencias nuevas. Solo la migracion que agrega `Match.espnEventId` y `Match.espnDate`:
+
+```bash
+cd backend
+npx prisma migrate deploy   # en desarrollo: npx prisma migrate dev
+npx prisma generate
+pm2 restart tablador-backend
+```
+
+Requiere Node 18+ (usa `fetch` nativo). Variables opcionales en `backend/.env`:
+
+```env
+LIVE_POLL_INTERVAL_MS=60000   # cada cuanto se consulta ESPN (default 60s)
+LIVE_POLLER_ENABLED=true      # false para apagar la consulta a ESPN
+```
+
+**Importante:** los datos en vivo se guardan en memoria del proceso. Correr el backend con UNA sola instancia de PM2 (no usar `-i`/cluster mode).
+
 ## Desarrollo
 
 Correr backend y frontend en terminales separadas:
@@ -230,6 +250,19 @@ La API: `GET /api/other-tables` devuelve `{ sinPlenos, plenosSeguidos, simplesSe
 - **Error**: 0 puntos
 
 Desempate: plenos > goles totales predichos
+
+### En Vivo (ESPN, Liga Profesional `arg.1`)
+
+1. Admin → entrar a la fecha del torneo principal (no a un suscrito) → **Vincular ESPN**.
+2. Elegir los dias de la fecha → **Buscar partidos ESPN** → **Auto-vincular** → corregir los marcados "⚠ revisar" → **Guardar vinculos**. Se copia a los torneos suscritos (Series B–D).
+   Si el auto-vincular falla siempre con un equipo, agregar el alias en `TEAM_ALIASES` de `frontend/src/pages/EspnLinker.jsx`.
+3. Sitio publico → **En Vivo** (`/en-vivo`) → elegir categoria. Se actualiza solo cada 60s y muestra la ultima fecha creada del torneo.
+
+Reglas:
+- El backend consulta ESPN cada 60s (setInterval dentro del proceso, sin Redis), solo para dias con partidos vinculados sin resultado que esten en juego o por empezar.
+- El resultado final **no se guarda automaticamente**. Mientras un partido no tenga resultado cargado, los puntos usan el marcador de ESPN (en vivo o final). Al cargar el resultado real, ese manda siempre.
+- Partidos sin vincular solo suman cuando se carga el resultado a mano.
+- Logs con prefijo `[LIVE]`, `[ESPN]`, `[LIVE-ROUTE]`, `[ESPN-ROUTE]` en `pm2 logs tablador-backend`.
 
 ## Comandos utiles
 

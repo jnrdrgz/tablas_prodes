@@ -63,6 +63,13 @@ export const updateResultsBulk = (gameweekId, resultsText) => request('/matches/
   body: JSON.stringify({ gameweekId, resultsText })
 })
 
+// ESPN live links (Liga Profesional). Dates as YYYY-MM-DD
+export const getEspnScoreboard = (from, to) => request(`/espn/scoreboard?from=${from}&to=${to}`)
+export const saveEspnLinks = (gameweekId, links) => request(`/espn/gameweek/${gameweekId}/links`, {
+  method: 'PUT',
+  body: JSON.stringify({ links })
+})
+
 // Predictions
 // format: 'whatsapp' | 'wpweb'. fillMissing: tournament predictors without prode get 9-9
 // dryRun: returns what would be loaded without saving anything
