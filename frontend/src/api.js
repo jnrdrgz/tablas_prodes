@@ -23,9 +23,13 @@ async function request(path, options = {}) {
   return data
 }
 
-// Tournaments
-export const getTournaments = () => request('/tournaments')
-export const getTournament = (id) => request(`/tournaments/${id}`)
+// Tournaments — admin always sees archived ones too
+export const getTournaments = () => request('/tournaments?includeArchived=true')
+export const getTournament = (id) => request(`/tournaments/${id}?includeArchived=true`)
+export const setTournamentArchived = (id, archived) => request(`/tournaments/${id}/archive`, {
+  method: 'PUT',
+  body: JSON.stringify({ archived })
+})
 export const createTournament = (data) => request('/tournaments', {
   method: 'POST',
   body: JSON.stringify(data)
@@ -59,10 +63,19 @@ export const updateResultsBulk = (gameweekId, resultsText) => request('/matches/
   body: JSON.stringify({ gameweekId, resultsText })
 })
 
+// ESPN live links (Liga Profesional). Dates as YYYY-MM-DD
+export const getEspnScoreboard = (from, to) => request(`/espn/scoreboard?from=${from}&to=${to}`)
+export const saveEspnLinks = (gameweekId, links) => request(`/espn/gameweek/${gameweekId}/links`, {
+  method: 'PUT',
+  body: JSON.stringify({ links })
+})
+
 // Predictions
-export const uploadPredictionsBulk = (gameweekId, whatsappText) => request('/predictions/bulk', {
+// format: 'whatsapp' | 'wpweb'. fillMissing: tournament predictors without prode get 9-9
+// dryRun: returns what would be loaded without saving anything
+export const uploadPredictionsBulk = (gameweekId, whatsappText, format, fillMissing, dryRun = false) => request('/predictions/bulk', {
   method: 'POST',
-  body: JSON.stringify({ gameweekId, whatsappText })
+  body: JSON.stringify({ gameweekId, whatsappText, format, fillMissing, dryRun })
 })
 export const deleteGameweekPredictions = (gameweekId) => request(`/predictions/gameweek/${gameweekId}`, {
   method: 'DELETE'
@@ -76,13 +89,17 @@ export const createMapping = (key, value) => request('/mappings', {
 })
 export const deleteMapping = (id) => request(`/mappings/${id}`, { method: 'DELETE' })
 
-// General Table
+// General Table (historic includes archived tournaments)
 export const getGeneralTable = () => request('/general-table')
+export const getHistoricTable = () => request('/general-table?includeArchived=true')
+
+// Otras Tablas: sin plenos, rachas, mejor fecha, puntos por equipo
+export const getOtherTables = () => request('/other-tables')
 
 // Debug
-export const debugParsePreview = (whatsappText) => request('/debug/parse-preview', {
+export const debugParsePreview = (whatsappText, format) => request('/debug/parse-preview', {
   method: 'POST',
-  body: JSON.stringify({ whatsappText })
+  body: JSON.stringify({ whatsappText, format })
 })
 
 // Fraud Analysis

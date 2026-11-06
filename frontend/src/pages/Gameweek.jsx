@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import html2canvas from 'html2canvas'
+import { toPng } from 'html-to-image'
 import * as api from '../api'
+import EspnLinker from './EspnLinker'
 
 function compareResult(prediction, realResult) {
   if (!prediction || !realResult || prediction === '9-9' || realResult === '9-9') {
@@ -33,6 +34,62 @@ function getMatchShortName(description) {
   return description.substring(0, 7)
 }
 
+// What a predictions upload is going to load (dry run response), with confirm/cancel
+function UploadPreview({ preview, matches, onConfirm, onCancel }) {
+  return (
+    <div className="mt-4 border-t border-gray-700 pt-4">
+      <h4 className="font-bold mb-2">Se va a cargar ({preview.predictions.length} participantes)</h4>
+
+      {preview.predictions.length === 0 ? (
+        <p className="text-yellow-400 mb-2">No se encontraron predicciones en el texto</p>
+      ) : (
+        <div className="overflow-x-auto mb-2">
+          <table className="table-dark min-w-max">
+            <thead>
+              <tr>
+                <th className="text-left">Participante</th>
+                {matches.map(m => (
+                  <th key={m.id} title={m.description}>{getMatchShortName(m.description)}</th>
+                ))}
+                <th className="text-left">Notas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preview.predictions.map((p, i) => {
+                const extra = p.results.length - matches.length
+                return (
+                  <tr key={i}>
+                    <td className="text-left font-medium">{p.predictor}</td>
+                    {matches.map((m, j) => (
+                      <td key={m.id}>{p.results[j] || '-'}</td>
+                    ))}
+                    <td className="text-left text-xs">
+                      {p.alreadyLoaded && <div className="text-blue-300">Ya tenia prode: se actualiza</div>}
+                      {extra < 0 && <div className="text-yellow-400">Faltan {-extra} resultados</div>}
+                      {extra > 0 && <div className="text-yellow-400">Sobran {extra} resultados (se ignoran)</div>}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {preview.filledWith99.length > 0 && (
+        <p className="text-sm mb-2">
+          Se completan con 9-9 ({preview.filledWith99.length}): {preview.filledWith99.join(', ')}
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <button type="button" onClick={onConfirm} className="btn btn-success">Confirmar carga</button>
+        <button type="button" onClick={onCancel} className="btn btn-secondary">Cancelar</button>
+      </div>
+    </div>
+  )
+}
+
 export default function Gameweek() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -46,8 +103,14 @@ export default function Gameweek() {
   const [predictionsText, setPredictionsText] = useState('')
   const [resultsText, setResultsText] = useState('')
   const [showMatchesForm, setShowMatchesForm] = useState(false)
-  const [showPredictionsForm, setShowPredictionsForm] = useState(false)
+  // null (closed) | 'whatsapp' | 'wpweb'
+  const [predictionsFormat, setPredictionsFormat] = useState(null)
+  const [fillMissing, setFillMissing] = useState(false)
+  const [validateBeforeUpload, setValidateBeforeUpload] = useState(false)
+  // Dry run result shown for confirmation; cleared whenever the text or options change
+  const [uploadPreview, setUploadPreview] = useState(null)
   const [showResultsForm, setShowResultsForm] = useState(false)
+  const [showEspnLinker, setShowEspnLinker] = useState(false)
   const [predictorsOrder, setPredictorsOrder] = useState('alpha')
 
   const isSubscribed = gameweek?.tournament?.subscribedToId != null
@@ -58,32 +121,30 @@ export default function Gameweek() {
   const tournamentPointsRef = useRef(null)
   const allTablesRef = useRef(null)
 
-  // Download table as image
+  // Download table as image (same implementation as the public frontend)
   async function downloadAsImage(element, filename) {
     if (!element) return
-
     try {
-      // Force desktop-like width for consistent rendering
-      const originalStyle = element.style.cssText
-      element.style.minWidth = '800px'
-      element.style.width = 'auto'
-
-      const canvas = await html2canvas(element, {
-        backgroundColor: '#1f2937', // gray-800 background
-        scale: 2, // Higher resolution
-        logging: false,
-        useCORS: true,
-        windowWidth: 1920 // Force desktop viewport
+      // Use scrollWidth/scrollHeight so the full table is captured on mobile
+      // (not just the visible overflow area). The style override tells
+      // html-to-image to expand the root element to its full scrollable size.
+      const dataUrl = await toPng(element, {
+        backgroundColor: '#1f2937',
+        pixelRatio: 2,
+        skipFonts: true,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        style: {
+          overflow: 'visible',
+          width: element.scrollWidth + 'px',
+          height: element.scrollHeight + 'px',
+          maxWidth: 'none',
+        },
       })
-
-      // Restore original style
-      element.style.cssText = originalStyle
-
       const link = document.createElement('a')
       link.download = `${filename}.png`
-      link.href = canvas.toDataURL('image/png')
+      link.href = dataUrl
       link.click()
-
       console.log('[GAMEWEEK] Downloaded image:', filename)
     } catch (err) {
       console.error('[GAMEWEEK] Error downloading image:', err)
@@ -132,17 +193,47 @@ export default function Gameweek() {
     }
   }
 
+  function togglePredictionsForm(format) {
+    setPredictionsFormat(predictionsFormat === format ? null : format)
+    setUploadPreview(null)
+  }
+
+  async function uploadPredictions() {
+    console.log(`[GAMEWEEK] Uploading predictions (format=${predictionsFormat}, fillMissing=${fillMissing})`)
+    try {
+      const result = await api.uploadPredictionsBulk(id, predictionsText, predictionsFormat, fillMissing)
+      let message = `Predicciones cargadas: ${result.created} creadas, ${result.updated} actualizadas`
+      if (result.filledWith99?.length > 0) {
+        message += `\nCompletados con 9-9 (${result.filledWith99.length}): ${result.filledWith99.join(', ')}`
+      }
+      console.log('[GAMEWEEK]', message)
+      alert(message)
+      setPredictionsText('')
+      setPredictionsFormat(null)
+      setUploadPreview(null)
+      loadData()
+    } catch (err) {
+      console.error('[GAMEWEEK] Error uploading predictions:', err)
+      setError(err.message)
+    }
+  }
+
   async function handleUploadPredictions(e) {
     e.preventDefault()
     if (!predictionsText.trim()) return
 
+    if (!validateBeforeUpload) {
+      await uploadPredictions()
+      return
+    }
+
+    console.log(`[GAMEWEEK] Validating predictions before upload (format=${predictionsFormat}, fillMissing=${fillMissing})`)
     try {
-      const result = await api.uploadPredictionsBulk(id, predictionsText)
-      alert(`Predicciones cargadas: ${result.created} creadas, ${result.updated} actualizadas`)
-      setPredictionsText('')
-      setShowPredictionsForm(false)
-      loadData()
+      const preview = await api.uploadPredictionsBulk(id, predictionsText, predictionsFormat, fillMissing, true)
+      console.log(`[GAMEWEEK] Preview: ${preview.predictions.length} participants, ${preview.filledWith99.length} filled with 9-9`)
+      setUploadPreview(preview)
     } catch (err) {
+      console.error('[GAMEWEEK] Error validating predictions:', err)
       setError(err.message)
     }
   }
@@ -258,7 +349,7 @@ export default function Gameweek() {
       )}
 
       {error && (
-        <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded mb-4">
+        <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded mb-4 whitespace-pre-line">
           {error}
           <button onClick={() => setError('')} className="float-right">&times;</button>
         </div>
@@ -296,13 +387,27 @@ export default function Gameweek() {
             >
               {showResultsForm ? 'Cerrar' : 'Cargar Resultados'}
             </button>
+            {gameweek.matches.length > 0 && (
+              <button
+                onClick={() => setShowEspnLinker(!showEspnLinker)}
+                className="btn btn-secondary"
+              >
+                {showEspnLinker ? 'Cerrar' : `Vincular ESPN (${gameweek.matches.filter(m => m.espnEventId).length}/${gameweek.matches.length})`}
+              </button>
+            )}
           </>
         )}
         <button
-          onClick={() => setShowPredictionsForm(!showPredictionsForm)}
+          onClick={() => togglePredictionsForm('whatsapp')}
           className="btn btn-primary"
         >
-          {showPredictionsForm ? 'Cerrar' : 'Cargar Predicciones (WhatsApp)'}
+          {predictionsFormat === 'whatsapp' ? 'Cerrar' : 'Cargar Predicciones (WhatsApp)'}
+        </button>
+        <button
+          onClick={() => togglePredictionsForm('wpweb')}
+          className="btn btn-primary"
+        >
+          {predictionsFormat === 'wpweb' ? 'Cerrar' : 'Cargar Predicciones (WP Web)'}
         </button>
         {predictorsList.length > 0 && (
           <button
@@ -349,21 +454,62 @@ export default function Gameweek() {
         </div>
       )}
 
-      {showPredictionsForm && (
+      {showEspnLinker && !isSubscribed && (
+        <EspnLinker gameweek={gameweek} onSaved={loadData} />
+      )}
+
+      {predictionsFormat && (
         <div className="card mb-4">
-          <h3 className="font-bold mb-2">Cargar Predicciones desde WhatsApp</h3>
+          <h3 className="font-bold mb-2">
+            {predictionsFormat === 'wpweb' ? 'Cargar Predicciones desde WhatsApp Web' : 'Cargar Predicciones desde WhatsApp'}
+          </h3>
           <p className="text-sm text-gray-400 mb-2">
-            Pegar el texto copiado de WhatsApp con las predicciones de todos
+            {predictionsFormat === 'wpweb'
+              ? 'Pegar los mensajes copiados de WhatsApp Web (cada mensaje empieza con [hora, fecha] Nombre:)'
+              : 'Pegar el texto copiado de WhatsApp con las predicciones de todos'}
           </p>
           <form onSubmit={handleUploadPredictions}>
             <textarea
               value={predictionsText}
-              onChange={(e) => setPredictionsText(e.target.value)}
+              onChange={(e) => { setPredictionsText(e.target.value); setUploadPreview(null) }}
               className="textarea h-48 mb-2"
-              placeholder="[1/21, 21:39] PMolina: Aldosivi 1-1 Defensa&#10;Banfield 0-2 Huracan&#10;[1/21, 23:13] +54 9 381 574-8792: Aldosivi 1-0 Defensa&#10;..."
+              placeholder={predictionsFormat === 'wpweb'
+                ? '[15:19, 9/4/2026] Juan Rodríguez: Estudiantes RC 0-1 Sarmiento\nBelgrano 1-0 Huracán\n[16:17, 9/4/2026] +54 9 3512 87-0987: Estudiantes RC 0-0 Sarmiento\n...'
+                : '[1/21, 21:39] PMolina: Aldosivi 1-1 Defensa\nBanfield 0-2 Huracan\n[1/21, 23:13] +54 9 381 574-8792: Aldosivi 1-0 Defensa\n...'}
             />
-            <button type="submit" className="btn btn-success">Cargar Predicciones</button>
+            <label className="flex items-center gap-2 mb-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={fillMissing}
+                onChange={(e) => { setFillMissing(e.target.checked); setUploadPreview(null) }}
+              />
+              Cargar faltantes con 9-9
+              <span className="text-gray-400">
+                (los de la tabla de puntos del torneo que no mandaron prode quedan con 9-9 en todos los partidos)
+              </span>
+            </label>
+            <label className="flex items-center gap-2 mb-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={validateBeforeUpload}
+                onChange={(e) => { setValidateBeforeUpload(e.target.checked); setUploadPreview(null) }}
+              />
+              Validar antes de cargar
+              <span className="text-gray-400">(muestra lo que se va a cargar y pide confirmar)</span>
+            </label>
+            <button type="submit" className="btn btn-success">
+              {validateBeforeUpload ? 'Validar' : 'Cargar Predicciones'}
+            </button>
           </form>
+
+          {uploadPreview && (
+            <UploadPreview
+              preview={uploadPreview}
+              matches={gameweek.matches}
+              onConfirm={uploadPredictions}
+              onCancel={() => setUploadPreview(null)}
+            />
+          )}
         </div>
       )}
 

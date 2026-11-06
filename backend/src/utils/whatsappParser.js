@@ -9,96 +9,169 @@
  * Banfield 0-0 Huracán
  * ...
  *
- * Returns array of { predictor: string, results: string[] }
- * where results are like "1-1", "0-2", etc.
+ * Returns { predictions, warnings }
+ *   predictions: [{ predictor: string, results: string[] }]  results are like "1-1", "0-2"
+ *   warnings: [{ predictor, position, score, message }]      double digit scores (probable typos)
  */
+
+// One message: "] Nombre: contenido" up to the "[" that opens the next message.
+// The name is anything after "]" that is not a colon or a bracket, so accented
+// names (Soberón, Villafañe) and phone numbers work the same.
+const MESSAGE_REGEX = /\]([^:\[]+):(.+?)\[/g;
+
+// WhatsApp Web copy: every message starts on its own line with "[hora, fecha] Nombre: ..."
+// e.g. "[15:19, 9/4/2026] Juan Rodríguez: Estudiantes RC 0-1 Sarmiento"
+// The bracket must contain a d/m/y date so a "[" typed inside a message is never a header.
+const WPWEB_HEADER_REGEX = /^\[[^\]]*\d+\/\d+\/\d+[^\]]*\]\s*([^:]+):(.*)$/;
+
+// WhatsApp sometimes pastes invisible direction marks around names and phone numbers
+const INVISIBLE_MARKS_REGEX = /[\u200e\u200f\u202a-\u202e]/g;
+
+// A score is digits-dash-digits, tolerating spaces around the dash ("1 - 0")
+const SCORE_REGEX = /(\d+)\s*-\s*(\d+)/g;
+
 function parseWhatsappPredictions(text, mappings = {}) {
   console.log('[PARSER] Parsing WhatsApp predictions text');
   console.log('[PARSER] Input length:', text.length);
 
-  // Remove all newlines to work with a single line (like old site does)
-  let processedText = text.replace(/\n/g, '');
-  processedText += '['; // Add trailing bracket for regex matching (like old site)
+  // Collapse everything into a single line (\r included: "." never matches \r)
+  let processedText = text.replace(/\r/g, '').replace(/\n/g, '');
+  processedText += '['; // trailing bracket so the last message also closes
 
-  // Extract names - everything between ] and :
-  const namesRegex = /\].+?:/g;
-  // Extract predictions - everything from 3 alphanumeric chars + : until next [
-  // This captures "xxx: content here["
-  const prodesRegex = /[a-zA-Z0-9][a-zA-Z0-9][a-zA-Z0-9]:.+?\[/g;
+  const messages = [...processedText.matchAll(MESSAGE_REGEX)]
+    .map(match => ({ name: match[1], content: match[2] }));
+  console.log(`[PARSER] Found ${messages.length} messages`);
 
-  const namesMatches = [...processedText.matchAll(namesRegex)];
-  const prodesMatches = [...processedText.matchAll(prodesRegex)];
+  return buildPredictions(messages, mappings);
+}
 
-  console.log(`[PARSER] Found ${namesMatches.length} names, ${prodesMatches.length} prediction sets`);
+/**
+ * Parse text copied from WhatsApp Web, line by line.
+ * A header line opens a new message; any other line belongs to the previous message.
+ */
+function parseWhatsappWebPredictions(text, mappings = {}) {
+  console.log('[PARSER] Parsing WhatsApp Web predictions text');
+  console.log('[PARSER] Input length:', text.length);
 
-  const results = [];
+  const lines = text.replace(INVISIBLE_MARKS_REGEX, '').replace(/\r/g, '').split('\n');
+  const messages = [];
 
-  for (let i = 0; i < namesMatches.length; i++) {
-    // Clean name - remove ], :, ~, and trim
-    let name = namesMatches[i][0]
-      .replace(/]/g, '')
-      .replace(/:/g, '')
-      .replace(/~/g, '')
-      .trim();
+  for (const line of lines) {
+    const header = line.match(WPWEB_HEADER_REGEX);
+
+    if (header) {
+      messages.push({ name: header[1], content: header[2] });
+    } else if (messages.length > 0) {
+      messages[messages.length - 1].content += '\n' + line;
+    } else if (line.trim()) {
+      console.warn(`[PARSER] Ignoring line before the first message header: "${line}"`);
+    }
+  }
+
+  console.log(`[PARSER] Found ${messages.length} messages`);
+
+  return buildPredictions(messages, mappings, { onePerPredictor: true });
+}
+
+/**
+ * Turn [{ name, content }] messages into predictions + warnings.
+ * Names go through the mappings; messages without scores (chat) are skipped.
+ * onePerPredictor: keep only each predictor's prode message (see keepLongestMessagePerPredictor).
+ */
+function buildPredictions(messages, mappings, { onePerPredictor = false } = {}) {
+  let candidates = [];
+
+  for (const message of messages) {
+    let name = message.name.replace(/~/g, '').trim();
 
     console.log(`[PARSER] Raw name extracted: "${name}"`);
 
-    // Apply mapping if exists
     if (mappings[name]) {
       console.log(`[PARSER] Mapping "${name}" -> "${mappings[name]}"`);
       name = mappings[name];
     }
 
-    if (i < prodesMatches.length) {
-      const prodeStr = prodesMatches[i][0];
-      console.log(`[PARSER] Raw prode string: "${prodeStr.substring(0, 50)}..."`);
+    const { scores, suspicious } = extractScores(message.content);
 
-      // IMPORTANT: Extract only the content AFTER the colon
-      // The prodeStr is like "792: Aldosivi 1-0 Defensa..." where 792 is part of phone
-      // We need to skip everything before and including the first ":"
-      const colonIndex = prodeStr.indexOf(':');
-      const contentAfterColon = colonIndex >= 0 ? prodeStr.substring(colonIndex + 1) : prodeStr;
-
-      console.log(`[PARSER] Content after colon: "${contentAfterColon.substring(0, 50)}..."`);
-
-      // Extract scores from the content only (not from the name/number part)
-      const scoreResults = extractScores(contentAfterColon);
-
-      console.log(`[PARSER] ${name}: ${scoreResults.length} predictions -> ${scoreResults.join(', ')}`);
-
-      results.push({
-        predictor: name,
-        results: scoreResults
-      });
+    if (scores.length === 0) {
+      console.log(`[PARSER] Skipping "${name}": message has no scores`);
+      continue;
     }
+
+    candidates.push({ name, scores, suspicious });
   }
 
-  return results;
+  if (onePerPredictor) {
+    candidates = keepLongestMessagePerPredictor(candidates);
+  }
+
+  const predictions = [];
+  const warnings = [];
+
+  for (const { name, scores, suspicious } of candidates) {
+    console.log(`[PARSER] ${name}: ${scores.length} predictions -> ${scores.join(', ')}`);
+
+    for (const s of suspicious) {
+      const warningText = `${name}: resultado con doble digito "${s.score}" en el partido ${s.position}`;
+      console.warn(`[PARSER] WARNING - ${warningText}`);
+      warnings.push({ predictor: name, position: s.position, score: s.score, message: warningText });
+    }
+
+    predictions.push({ predictor: name, results: scores });
+  }
+
+  console.log(`[PARSER] Done: ${predictions.length} prediction sets, ${warnings.length} warnings`);
+
+  return { predictions, warnings };
 }
 
 /**
- * Extract scores from a prediction string (content after the name:)
- * Input should NOT include the name/number part
- * Handles formats like "Team1 1-0 Team2Team3 2-1 Team4["
+ * A predictor can send chat with a score after the prode ("vamos 2-0"), which would
+ * overwrite their first match. Keep only the message with the most scores per predictor;
+ * on a tie the later one wins, so a full prode re-sent as a correction still replaces the first.
  */
-function extractScores(contentStr) {
-  // Remove the trailing [
-  const cleanStr = contentStr.replace(/\[$/g, '');
+function keepLongestMessagePerPredictor(candidates) {
+  const bestByName = new Map();
 
-  // Extract all single digits (scores are typically 0-9)
-  // This approach extracts digit by digit and pairs them
-  const numbers = cleanStr.replace(/\D/g, '').split('');
+  for (const candidate of candidates) {
+    const best = bestByName.get(candidate.name);
 
-  console.log(`[PARSER] Extracted digits: ${numbers.join(',')}`);
-
-  const scores = [];
-  for (let i = 0; i < numbers.length; i += 2) {
-    if (numbers[i] !== undefined && numbers[i + 1] !== undefined) {
-      scores.push(`${numbers[i]}-${numbers[i + 1]}`);
+    if (!best) {
+      bestByName.set(candidate.name, candidate);
+    } else if (candidate.scores.length >= best.scores.length) {
+      console.log(`[PARSER] ${candidate.name}: later message with ${candidate.scores.length} scores replaces earlier one with ${best.scores.length}`);
+      bestByName.set(candidate.name, candidate);
+    } else {
+      console.log(`[PARSER] ${candidate.name}: ignoring message with ${candidate.scores.length} scores (${candidate.scores.join(', ')}), keeping the one with ${best.scores.length}`);
     }
   }
 
-  return scores;
+  return [...bestByName.values()];
+}
+
+/**
+ * Extract scores from a message body (content after "Nombre:")
+ * Returns { scores: ["1-0", ...], suspicious: [{ position, score }] }
+ * A score with more than one digit per side is almost always a typo (0-25 instead of 0-2),
+ * so it is reported instead of being silently accepted.
+ */
+function extractScores(contentStr) {
+  const scores = [];
+  const suspicious = [];
+
+  for (const match of contentStr.matchAll(SCORE_REGEX)) {
+    const home = match[1];
+    const away = match[2];
+    const score = `${home}-${away}`;
+
+    scores.push(score);
+
+    if (home.length > 1 || away.length > 1) {
+      suspicious.push({ position: scores.length, score });
+    }
+  }
+
+  return { scores, suspicious };
 }
 
 /**
@@ -113,5 +186,6 @@ function parseMatchList(text) {
 
 module.exports = {
   parseWhatsappPredictions,
+  parseWhatsappWebPredictions,
   parseMatchList
 };

@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>En Vivo — Mockup</title>
+<script src="https://cdn.tailwindcss.com/3.4.1"></script>
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: {
+      brand: { 400:'#f87171', 600:'#da020f', 700:'#b91c1c', 900:'#7f1d1d', 950:'#450a0a' },
+      gray: { 300:'#c9a3a3', 400:'#a88888', 500:'#8a6666', 600:'#6b4a4a', 700:'#4d3333', 800:'#362222', 900:'#251515' }
+    },
+    fontFamily: { bebas: ['"Bebas Neue"', 'sans-serif'] }
+  } } }
+</script>
+<style>
+  @font-face { font-family: 'Bebas Neue'; src: url('../bebas.ttf') format('truetype'); }
+  body { background:#1a0808; color:#eee; font-family: ui-sans-serif, system-ui, sans-serif; }
+  .card { background:#362222; border-radius:.5rem; padding:1rem; box-shadow:0 10px 15px -3px rgba(0,0,0,.3); }
+  .pulse { animation: pulse 1.5s infinite; }
+  @keyframes pulse { 50% { opacity:.3 } }
+  .screen { display:none } .screen.active { display:block }
+  td, th { text-align:center; vertical-align:middle; }
+  .sticky-col { position:sticky; left:0; background:#362222; z-index:1; }
+  thead .sticky-col { background:#4d3333; }
+  .live-col { box-shadow: inset 0 2px 0 #da020f; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Mockup-only switcher: not part of the real design -->
+<div class="bg-yellow-400 text-black text-xs p-2 flex flex-wrap gap-2 justify-center">
+  <b>MOCKUP →</b>
+  <button onclick="show('picker')" class="underline">1. /en-vivo (elegir categoría)</button>
+  <button onclick="show('live')" class="underline">2. /en-vivo/serie-a</button>
+  <button onclick="show('admin')" class="underline">3. Admin: vincular ESPN</button>
+</div>
+
+<nav class="bg-brand-950 border-b border-brand-900 p-4 mb-4">
+  <div class="container mx-auto flex flex-wrap items-center gap-4">
+    <a class="flex items-center gap-3" href="#">
+      <img src="../logo_cmn.png" class="h-10 w-10 invert" alt="">
+      <span class="text-xl text-red-400 font-bebas tracking-wider">Prodes Conmigliazzo</span>
+    </a>
+    <a class="text-gray-300 hover:text-white" href="#">Tabla General Temporada</a>
+    <a class="text-gray-300 hover:text-white" href="#">Tabla Historica</a>
+    <a class="text-white flex items-center gap-1" href="#" onclick="show('picker')">
+      <span class="h-2 w-2 rounded-full bg-brand-600 pulse"></span> En Vivo
+    </a>
+  </div>
+</nav>
+
+<main class="container mx-auto px-4 pb-12">
+
+  <!-- ============ 1. CATEGORY PICKER ============ -->
+  <section id="picker" class="screen active max-w-4xl mx-auto">
+    <h1 class="text-4xl font-bebas tracking-wider mb-1">En Vivo</h1>
+    <p class="text-gray-400 mb-6">Temporada 16 · Fecha 14 · <span id="picker-live-count"></span> partidos jugándose ahora</p>
+    <div id="picker-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+  </section>
+
+  <!-- ============ 2. LIVE TOURNAMENT VIEW ============ -->
+  <section id="live" class="screen max-w-7xl mx-auto">
+    <a href="#" onclick="show('picker')" class="text-red-400 hover:text-red-300 mb-3 inline-block">&larr; Volver a categorías</a>
+    <div class="flex flex-wrap justify-between items-end gap-2 mb-4">
+      <div>
+        <h1 class="text-4xl font-bebas tracking-wider">Serie A — Temporada 16</h1>
+        <p class="text-gray-400 text-sm">Fecha 14 · 15 partidos · 14 participantes · Actualizado hace 12s</p>
+      </div>
+      <div class="flex lg:hidden bg-gray-800 rounded overflow-hidden text-sm">
+        <button class="px-3 py-2 bg-brand-600">Partidos</button>
+        <button class="px-3 py-2">Tabla</button>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-5 gap-4">
+      <!-- LIVE SCORES -->
+      <div class="lg:col-span-2">
+        <h2 class="font-bebas text-2xl tracking-wider mb-3">Partidos</h2>
+        <div id="match-cards" class="space-y-3"></div>
+      </div>
+
+      <!-- LIVE POINTS TABLE -->
+      <div class="lg:col-span-3">
+        <h2 class="font-bebas text-2xl tracking-wider mb-3">Tabla en vivo</h2>
+        <div class="card overflow-x-auto p-0">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-700">
+              <tr>
+                <th class="px-2 py-2">#</th>
+                <th class="px-2 py-2"></th>
+                <th class="px-2 py-2" style="text-align:left">Jugador</th>
+                <th class="px-2 py-2" title="Puntos en esta fecha (incluye partidos en curso)">Fecha</th>
+                <th class="px-2 py-2">Plenos</th>
+                <th class="px-2 py-2">Total</th>
+              </tr>
+            </thead>
+            <tbody id="points-body"></tbody>
+          </table>
+        </div>
+        <p class="text-xs text-gray-400 mt-2">
+          Puntos provisorios: los partidos en curso cuentan como si terminaran así.
+          <span class="text-green-400">(+n)</span> = puntos que aportan los partidos en curso.
+          ▲▼ = cambio de posición por los partidos en curso.
+        </p>
+      </div>
+    </div>
+
+    <!-- Predictions grid: full width, 15 columns -->
+    <h2 class="font-bebas text-2xl tracking-wider mt-6 mb-3">Pronósticos</h2>
+    <div class="card overflow-x-auto p-0">
+      <table class="w-full text-xs whitespace-nowrap">
+        <thead class="bg-gray-700" id="grid-head"></thead>
+        <tbody id="grid-body"></tbody>
+      </table>
+    </div>
+    <p class="text-xs text-gray-400 mt-2">Verde = pleno, amarillo = ganador. Línea roja arriba = partido en curso.</p>
+  </section>
+
+  <!-- ============ 3. ADMIN: LINK ESPN MATCHES ============ -->
+  <section id="admin" class="screen max-w-4xl mx-auto">
+    <p class="text-xs text-yellow-400 mb-2">Esta pantalla va en el admin (frontend), dentro de cada Fecha.</p>
+    <h1 class="text-3xl font-bold mb-1">Serie A · Fecha 14 — Vincular con ESPN</h1>
+    <p class="text-gray-400 text-sm mb-4">Liga: <code>arg.1</code> Liga Profesional. Elegí los días de la fecha y vinculá cada partido.</p>
+
+    <div class="card mb-4 flex flex-wrap items-end gap-3">
+      <div><label class="text-xs text-gray-400 block">Desde</label><input type="date" value="2026-11-06" class="bg-gray-900 border border-gray-600 rounded px-2 py-1"></div>
+      <div><label class="text-xs text-gray-400 block">Hasta</label><input type="date" value="2026-11-09" class="bg-gray-900 border border-gray-600 rounded px-2 py-1"></div>
+      <button class="bg-brand-600 hover:bg-brand-700 px-4 py-2 rounded">Buscar partidos ESPN</button>
+      <button class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Auto-vincular</button>
+      <label class="text-sm flex items-center gap-2 ml-auto"><input type="checkbox" checked> Aplicar a Series A–D</label>
+    </div>
+
+    <div class="card p-0 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-700"><tr><th class="px-3 py-2" style="text-align:left">Partido nuestro</th><th class="px-3 py-2" style="text-align:left">Partido ESPN</th><th class="px-3 py-2">Estado</th></tr></thead>
+        <tbody id="admin-body"></tbody>
+      </table>
+    </div>
+    <div class="flex flex-wrap justify-end gap-2 mt-3">
+      <label class="text-sm flex items-center gap-2 mr-auto"><input type="checkbox" checked> Cargar resultado final automáticamente al terminar</label>
+      <button class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Guardar vínculos</button>
+    </div>
+  </section>
+</main>
+
+<script>
+// ---------- Fake data (mockup only) ----------
+// status: FT = final, LIVE = en curso, HT = entretiempo, SCHED = no empezó, NOLINK = sin vincular a ESPN
+const MATCHES = [
+  { home:'Aldosivi',      away:'Defensa',       espn:'Aldosivi vs Defensa y Justicia',          status:'FT',    score:[1,1], when:'vie 19:00', events:{ h:["⚽ Cauteruccio 23'"], a:["⚽ Fernández 78'"] } },
+  { home:'Banfield',      away:'Huracán',       espn:'Banfield vs Huracán',                      status:'FT',    score:[0,2], when:'vie 21:15', events:{ h:[], a:["⚽ Echeverri 10'", "⚽ Cabral 88'"] } },
+  { home:'Unión',         away:'Platense',      espn:null,                                       status:'NOLINK',score:null,  when:'sáb 15:00' },
+  { home:'Instituto',     away:'Vélez',         espn:'Instituto vs Vélez Sarsfield',             status:'FT',    score:[0,1], when:'sáb 15:00', events:{ h:[], a:["⚽ Pratto 51' (P)"] } },
+  { home:'Central Cba',   away:'Gimnasia Mza',  espn:'Central Córdoba (SdE) vs Gimnasia (M)',    status:'FT',    score:[2,2], when:'sáb 17:00', events:{ h:["⚽ Heredia 4'", "⚽ Verón 70'"], a:["⚽ Lencioni 33'", "⚽ Mazzola 90'+3'"] } },
+  { home:'San Lorenzo',   away:'Lanús',         espn:'San Lorenzo vs Lanús',                     status:'LIVE',  score:[1,0], when:"78'",  events:{ h:["⚽ Reali 34'"], a:["🟥 Izquierdoz 60'"] } },
+  { home:'Independiente', away:'Estudiantes LP',espn:'Independiente vs Estudiantes de La Plata', status:'LIVE',  score:[1,1], when:"55'",  events:{ h:["⚽ Ávalos 12'"], a:["⚽ Carrillo 48'"] } },
+  { home:'Ind. Rivadavia',away:'Atl. Tucumán',  espn:'Independiente Rivadavia vs Atlético Tucumán', status:'HT', score:[0,0], when:'ET',  events:{ h:[], a:[] } },
+  { home:'Talleres',      away:"Newell's",      espn:"Talleres (C) vs Newell's Old Boys",        status:'LIVE',  score:[2,1], when:"23'",  events:{ h:["⚽ Bustos 5'", "⚽ Girotti 19' (P)"], a:["⚽ Ramírez 14'"] } },
+  { home:'Barracas',      away:'River',         espn:'Barracas Central vs River Plate',          status:'SCHED', score:null,  when:'sáb 21:30' },
+  { home:'Gimnasia LP',   away:'Racing',        espn:'Gimnasia La Plata vs Racing Club',         status:'SCHED', score:null,  when:'dom 15:00' },
+  { home:'Rosario Central',away:'Belgrano',     espn:'Rosario Central vs Belgrano',              status:'SCHED', score:null,  when:'dom 17:00' },
+  { home:'Boca',          away:'Riestra',       espn:'Boca Juniors vs Deportivo Riestra',        status:'SCHED', score:null,  when:'dom 19:15' },
+  { home:'Argentinos',    away:'Sarmiento',     espn:'Argentinos Juniors vs Sarmiento',          status:'SCHED', score:null,  when:'lun 19:00' },
+  { home:'Tigre',         away:'Estudiantes RC',espn:null,                                       status:'NOLINK',score:null,  when:'lun 21:00' },
+];
+
+const PLAYERS = ['Pablo','Nacho','Juan','Fede','Martín','Lucas','Gonza','Seba','Tomi','Rodri','Maxi','Facu','Diego','Agus'];
+const PREVIOUS_TOTALS = [52,50,49,47,46,45,44,42,41,40,38,37,35,31];
+
+// deterministic pseudo-random so the mockup looks the same on every reload
+let seed = 7;
+function rand() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+function randomScore() {
+  if (rand() < 0.04) return '9-9';
+  const pick = () => { const r = rand(); return r < .35 ? 0 : r < .75 ? 1 : r < .93 ? 2 : 3; };
+  return pick() + '-' + pick();
+}
+const PREDICTIONS = PLAYERS.map(() => MATCHES.map(randomScore));
+
+// ---------- Scoring (same rules as backend/src/utils/points.js: 3 exact, 1 winner) ----------
+function compare(pred, score) {
+  if (!score || pred === '9-9') return { pts:0, status:'skip' };
+  const [ph, pa] = pred.split('-').map(Number);
+  const [rh, ra] = score;
+  if (ph === rh && pa === ra) return { pts:3, status:'exact' };
+  if (Math.sign(ph - pa) === Math.sign(rh - ra)) return { pts:1, status:'winner' };
+  return { pts:0, status:'wrong' };
+}
+const isInPlay = m => m.status === 'LIVE' || m.status === 'HT';
+const short = m => m.home.slice(0,3).toUpperCase() + '-' + m.away.slice(0,3).toUpperCase();
+
+function buildStandings() {
+  const rows = PLAYERS.map((name, p) => {
+    let finished = 0, live = 0, plenos = 0;
+    MATCHES.forEach((m, i) => {
+      const c = compare(PREDICTIONS[p][i], m.score);
+      if (c.status === 'exact') plenos++;
+      if (isInPlay(m)) live += c.pts; else finished += c.pts;
+    });
+    return { name, finished, live, plenos, before: PREVIOUS_TOTALS[p] + finished, total: PREVIOUS_TOTALS[p] + finished + live };
+  });
+  const rankBefore = [...rows].sort((a,b) => b.before - a.before).map(r => r.name);
+  rows.sort((a,b) => b.total - a.total || b.plenos - a.plenos);
+  rows.forEach((r, i) => { r.move = rankBefore.indexOf(r.name) - i; });
+  return rows;
+}
+
+// ---------- Rendering ----------
+function statusBadge(m) {
+  if (m.status === 'LIVE') return `<span class="text-brand-400 font-bold flex items-center gap-1"><span class="h-1.5 w-1.5 bg-brand-600 rounded-full pulse"></span>${m.when}</span>`;
+  if (m.status === 'HT') return `<span class="text-yellow-400 font-bold">ENTRETIEMPO</span>`;
+  if (m.status === 'FT') return `<span class="text-gray-300 font-bold">FINAL</span>`;
+  return `<span class="text-gray-400">${m.when}</span>`;
+}
+
+function renderMatchCards() {
+  // order: in play first, then finished, then scheduled
+  const order = { LIVE:0, HT:1, FT:2, SCHED:3, NOLINK:4 };
+  const sorted = MATCHES.map((m, i) => ({ m, i })).sort((a,b) => order[a.m.status] - order[b.m.status]);
+  document.getElementById('match-cards').innerHTML = sorted.map(({ m, i }) => {
+    if (m.status === 'NOLINK') {
+      return `<div class="card py-3 opacity-60 border border-dashed border-gray-600">
+        <div class="flex items-center justify-between"><span class="flex-1">${m.home}</span><span class="text-xs px-3 text-gray-500">sin datos en vivo · ${m.when}</span><span class="flex-1 text-right">${m.away}</span></div></div>`;
+    }
+    const score = m.score ? `${m.score[0]} - ${m.score[1]}` : '- : -';
+    const dim = m.status === 'SCHED' ? 'opacity-60 py-3' : m.status === 'FT' ? 'opacity-80' : '';
+    let extra = '';
+    if (m.events && (m.events.h.length || m.events.a.length)) {
+      extra += `<div class="text-xs text-gray-400 mt-2 grid grid-cols-2 gap-1"><div>${m.events.h.join('<br>')}</div><div class="text-right">${m.events.a.join('<br>')}</div></div>`;
+    }
+    if (isInPlay(m)) {
+      const hits = PLAYERS.map((name, p) => ({ name, pred: PREDICTIONS[p][i], c: compare(PREDICTIONS[p][i], m.score) }))
+        .filter(h => h.c.pts > 0).sort((a,b) => b.c.pts - a.c.pts);
+      const shown = hits.slice(0, 4).map(h => `<span class="${h.c.status === 'exact' ? 'bg-green-700' : 'bg-yellow-600'} px-1.5 rounded">${h.name} ${h.pred}</span>`).join('');
+      const more = hits.length > 4 ? `<span class="text-gray-500">+${hits.length - 4} más</span>` : '';
+      extra += `<div class="mt-3 pt-2 border-t border-gray-700 text-xs flex flex-wrap gap-1 items-center">
+        <span class="text-gray-400 mr-1">Aciertan ${hits.length}/${PLAYERS.length}:</span>${shown || '<span class="text-gray-500">nadie</span>'}${more}</div>`;
+    }
+    return `<div class="card ${dim}">
+      ${m.status !== 'SCHED' ? `<div class="flex justify-between text-xs mb-1">${statusBadge(m)}</div>` : ''}
+      <div class="flex items-center justify-between ${m.status === 'SCHED' ? '' : 'text-lg'}">
+        <span class="flex-1">${m.home}</span>
+        <span class="${m.status === 'SCHED' ? 'text-xs text-gray-400' : 'font-bebas text-3xl'} px-3">${m.status === 'SCHED' ? m.when : score}</span>
+        <span class="flex-1 text-right">${m.away}</span>
+      </div>${extra}</div>`;
+  }).join('');
+}
+
+function renderPointsTable(rows) {
+  document.getElementById('points-body').innerHTML = rows.map((r, i) => {
+    const move = r.move > 0 ? `<span class="text-green-400">▲${r.move}</span>` : r.move < 0 ? `<span class="text-red-400">▼${-r.move}</span>` : '<span class="text-gray-500">=</span>';
+    const live = r.live > 0 ? ` <span class="text-green-400 text-xs">(+${r.live})</span>` : '';
+    const leader = i === 0 ? 'bg-brand-900/40' : '';
+    return `<tr class="border-t border-gray-700 ${leader}">
+      <td class="px-2 py-1.5 font-bold">${i + 1}</td><td class="text-xs">${move}</td>
+      <td class="px-2 py-1.5" style="text-align:left">${r.name}</td>
+      <td class="px-2 py-1.5">${r.finished + r.live}${live}</td>
+      <td>${r.plenos}</td><td class="font-bold text-base">${r.total}</td></tr>`;
+  }).join('');
+}
+
+function renderPredictionsGrid(rows) {
+  const headCells = MATCHES.map(m => {
+    let sub = `<span class="text-gray-500">${m.when}</span>`;
+    if (m.status === 'FT') sub = `<span class="text-gray-300">${m.score.join('-')} · F</span>`;
+    if (m.status === 'LIVE') sub = `<span class="text-brand-400">${m.score.join('-')} · ${m.when}</span>`;
+    if (m.status === 'HT') sub = `<span class="text-yellow-400">${m.score.join('-')} · ET</span>`;
+    return `<th class="px-2 py-2 ${isInPlay(m) ? 'live-col' : ''}" title="${m.home} - ${m.away}">${short(m)}<br>${sub}</th>`;
+  }).join('');
+  document.getElementById('grid-head').innerHTML = `<tr><th class="px-2 py-2 sticky-col" style="text-align:left">Jugador</th>${headCells}<th class="px-2 py-2">Pts</th></tr>`;
+
+  // same order as the live table
+  document.getElementById('grid-body').innerHTML = rows.map(r => {
+    const p = PLAYERS.indexOf(r.name);
+    const cells = MATCHES.map((m, i) => {
+      const pred = PREDICTIONS[p][i];
+      const c = compare(pred, m.score);
+      const cls = pred === '9-9' ? 'bg-gray-600 text-gray-400' : c.status === 'exact' ? 'bg-green-700' : c.status === 'winner' ? 'bg-yellow-600' : '';
+      return `<td class="px-2 py-1 border border-gray-700 ${cls}">${pred}</td>`;
+    }).join('');
+    return `<tr><td class="px-2 py-1 border border-gray-700 sticky-col" style="text-align:left">${r.name}</td>${cells}<td class="px-2 py-1 border border-gray-700 font-bold">${r.finished + r.live}</td></tr>`;
+  }).join('');
+}
+
+function renderPicker() {
+  const liveCount = MATCHES.filter(isInPlay).length;
+  document.getElementById('picker-live-count').textContent = liveCount;
+  const series = [
+    { name:'Serie A', leader:'Pablo', gain:5, live:true },
+    { name:'Serie B', leader:'Nacho', gain:4, live:true },
+    { name:'Serie C', leader:'Fede',  gain:3, live:true },
+    { name:'Serie D', leader:'Juan',  gain:0, live:false },
+  ];
+  document.getElementById('picker-grid').innerHTML = series.map(s => `
+    <button onclick="show('live')" class="card text-left hover:ring-2 hover:ring-brand-600 transition">
+      <div class="flex justify-between items-center">
+        <span class="font-bebas text-3xl tracking-wider">${s.name}</span>
+        ${s.live
+          ? `<span class="text-xs bg-brand-600 px-2 py-1 rounded flex items-center gap-1"><span class="h-1.5 w-1.5 bg-white rounded-full pulse"></span>EN VIVO · ${liveCount}</span>`
+          : `<span class="text-xs bg-gray-600 px-2 py-1 rounded">PRÓXIMO sáb 21:30</span>`}
+      </div>
+      <p class="text-sm text-gray-400 mt-2">14 participantes · Puntero: <b class="text-white">${s.leader}</b>${s.gain ? ` (+${s.gain} hoy)` : ''}</p>
+    </button>`).join('');
+}
+
+function renderAdmin() {
+  document.getElementById('admin-body').innerHTML = MATCHES.map((m, i) => {
+    const needsReview = i === 4; // fake "fuzzy match not sure" row
+    let select, state, rowCls = '';
+    if (!m.espn) {
+      select = `<select class="bg-gray-900 border border-gray-600 rounded px-2 py-1 w-full"><option>— no vincular —</option></select>`;
+      state = '<span class="text-gray-400">— manual</span>';
+    } else if (needsReview) {
+      rowCls = 'bg-yellow-900/30';
+      select = `<select class="bg-gray-900 border border-yellow-600 rounded px-2 py-1 w-full"><option>— elegir —</option><option>${m.espn} · ${m.when}</option></select>`;
+      state = '<span class="text-yellow-400">⚠ revisar</span>';
+    } else {
+      select = `<select class="bg-gray-900 border border-gray-600 rounded px-2 py-1 w-full"><option>${m.espn} · ${m.when}</option></select>`;
+      state = '<span class="text-green-400">✔ auto</span>';
+    }
+    return `<tr class="border-t border-gray-700 ${rowCls}"><td class="px-3 py-2" style="text-align:left">${m.home} - ${m.away}</td><td class="px-3 py-2">${select}</td><td class="px-3 py-2">${state}</td></tr>`;
+  }).join('');
+}
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+  window.scrollTo(0, 0);
+}
+
+const standings = buildStandings();
+renderPicker();
+renderMatchCards();
+renderPointsTable(standings);
+renderPredictionsGrid(standings);
+renderAdmin();
+</script>
+</body>
+</html>

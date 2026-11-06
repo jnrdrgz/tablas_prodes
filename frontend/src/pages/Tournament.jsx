@@ -66,6 +66,21 @@ export default function Tournament() {
     }
   }
 
+  async function handleToggleArchive() {
+    const archived = !tournament.archived
+    const action = archived ? 'Archivar' : 'Desarchivar'
+    if (!confirm(`${action} "${tournament.description}"? ${archived ? 'Dejara de verse en la web publica y no contara en la Tabla General.' : 'Volvera a verse en la web publica.'}`)) return
+
+    try {
+      await api.setTournamentArchived(id, archived)
+      console.log(`[TOURNAMENT] Tournament ${id} archived=${archived}`)
+      loadTournament()
+    } catch (err) {
+      console.error('[TOURNAMENT] Error archiving:', err)
+      setError(err.message)
+    }
+  }
+
   async function handleSaveSettings(e) {
     e.preventDefault()
     try {
@@ -93,7 +108,20 @@ export default function Tournament() {
         &larr; Volver a torneos
       </Link>
 
-      <h1 className="text-3xl font-bold mb-2">{tournament.description}</h1>
+      <h1 className="text-3xl font-bold mb-2">
+        {tournament.description}
+        {tournament.archived && (
+          <span className="ml-3 text-sm font-normal bg-amber-700 text-amber-100 px-2 py-1 rounded align-middle">
+            ARCHIVADO
+          </span>
+        )}
+      </h1>
+
+      {tournament.archived && (
+        <p className="text-amber-400 mb-4">
+          Torneo archivado: no se muestra en la web publica y no suma en la Tabla General (si en la Tabla Historica).
+        </p>
+      )}
 
       {isSubscribed && (
         <p className="text-yellow-500 mb-4">
@@ -120,9 +148,17 @@ export default function Tournament() {
       {/* Settings Toggle */}
       <button
         onClick={() => setShowSettings(!showSettings)}
-        className="btn btn-secondary mb-4"
+        className="btn btn-secondary mb-4 mr-2"
       >
         {showSettings ? 'Ocultar Configuracion' : 'Configuracion'}
+      </button>
+
+      {/* Archive Toggle */}
+      <button
+        onClick={handleToggleArchive}
+        className="btn btn-secondary mb-4"
+      >
+        {tournament.archived ? 'Desarchivar Torneo' : 'Archivar Torneo'}
       </button>
 
       {/* Settings Form */}

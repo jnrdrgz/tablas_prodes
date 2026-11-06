@@ -38,6 +38,39 @@ npx prisma migrate dev --name init
 npx prisma generate
 ```
 
+### 4. Actualizar despues de cambios (torneos archivados / captura de imagen)
+
+```bash
+# Backend: aplicar la migracion que agrega Tournament.archived
+cd backend
+npx prisma migrate deploy   # en desarrollo: npx prisma migrate dev
+npx prisma generate
+
+# Frontend admin: ahora usa html-to-image (igual que el publico)
+cd ../frontend
+npm install
+```
+
+### 5. Actualizar para En Vivo (ESPN)
+
+No hay dependencias nuevas. Solo la migracion que agrega `Match.espnEventId` y `Match.espnDate`:
+
+```bash
+cd backend
+npx prisma migrate deploy   # en desarrollo: npx prisma migrate dev
+npx prisma generate
+pm2 restart tablador-backend
+```
+
+Requiere Node 18+ (usa `fetch` nativo). Variables opcionales en `backend/.env`:
+
+```env
+LIVE_POLL_INTERVAL_MS=60000   # cada cuanto se consulta ESPN (default 60s)
+LIVE_POLLER_ENABLED=true      # false para apagar la consulta a ESPN
+```
+
+**Importante:** los datos en vivo se guardan en memoria del proceso. Correr el backend con UNA sola instancia de PM2 (no usar `-i`/cluster mode).
+
 ## Desarrollo
 
 Correr backend y frontend en terminales separadas:
@@ -148,6 +181,19 @@ server {
    ...
    ```
 
+   Si los mensajes se copian desde **WhatsApp Web**, usar el boton **Cargar Predicciones (WP Web)**. Ese formato se lee linea por linea: cada mensaje empieza con `[hora, fecha] Nombre:` y las lineas siguientes son parte de ese mensaje:
+   ```
+   [15:19, 9/4/2026] Juan Rodríguez: Boca 2-1 River
+   Racing 1-0 Independiente
+   [16:17, 9/4/2026] +54 9 3512 87-0987: Boca 1-1 River
+   Racing 2-1 Independiente
+   ```
+   Los mensajes sin resultados (charla del grupo) se ignoran. Si una persona manda varios mensajes con resultados, se toma solo el que tiene mas resultados (su prode); si empatan, el ultimo. Asi un "vamos 2-0" mandado despues no pisa el primer partido.
+
+   **Cargar faltantes con 9-9** (checkbox, apagado por defecto): si se activa, despues de cargar, todos los participantes que aparecen en la tabla de puntos del torneo (hasta esta fecha) y no tienen ninguna prediccion en esta fecha quedan con `9-9` en todos los partidos (prode no enviado / invalido / anulado). No toca a quien ya cargo predicciones en la fecha.
+
+   **Validar antes de cargar** (checkbox, apagado por defecto): el boton pasa a decir **Validar** y, en vez de cargar, muestra una tabla con lo que se va a cargar (resultado por partido de cada participante, quien ya tenia prode y se actualiza, a quien le faltan o sobran resultados, y quienes se completarian con 9-9). No se guarda nada hasta apretar **Confirmar carga**. Si se cambia el texto o alguna opcion, hay que volver a validar.
+
 6. **Cargar resultados** - Cuando terminen los partidos, cargar los resultados reales
 
 7. **Ver tabla** - La tabla de puntos se calcula automaticamente
@@ -162,6 +208,41 @@ Un torneo puede "suscribirse" a otro. Esto significa que:
 
 Util para tener el mismo fixture con diferentes grupos de amigos.
 
+### Torneos archivados
+
+Desde el admin (`/tournaments` o la pagina del torneo) se puede **Archivar** un torneo:
+
+- Deja de aparecer en el frontend publico (lista y detalle devuelven 404)
+- Sigue visible en el admin, pintado en color ambar con el cartel `ARCHIVADO`
+- No suma en la **Tabla General**, pero si en la **Tabla Historica**
+- Se puede **Desarchivar** en cualquier momento (no se borra nada)
+
+La API expone:
+- `GET /api/tournaments` -> solo activos; `?includeArchived=true` -> todos (lo usa el admin)
+- `PUT /api/tournaments/:id/archive` con body `{ "archived": true|false }`
+- `GET /api/general-table` -> Tabla General (solo activos); `?includeArchived=true` -> Tabla Historica
+
+### Tablas General e Historica
+
+Ambas estan disponibles en el admin y en el publico:
+- `/general` - Tabla General: suma solo torneos NO archivados
+- `/historica` - Tabla Historica: suma todos los torneos, incluidos los archivados
+
+### Otras Tablas (solo admin)
+
+En el admin el link **Otras Tablas** (`/tablas/general`) junta todas las tablas en pestañas. `/general` y `/historica` redirigen ahi.
+
+- **Tabla General** y **Tabla Historica**: las de siempre.
+- **General sin Plenos**: solo torneos activos. Cada acierto de ganador/empate vale 1 punto, sea pleno o no.
+- **Plenos Seguidos** (historico): la racha mas larga de partidos seguidos con resultado exacto de cada participante.
+- **Simples Seguidos** (historico): la racha mas larga de partidos seguidos acertando al menos ganador/empate (un pleno tambien cuenta).
+- **Puntos en una Fecha** (historico): la mejor fecha de cada participante (puntos, desempate por plenos).
+- **Puntos por Equipo** (historico): para cada equipo, quien sumo mas puntos en los partidos de ese equipo. Formato `[equipo] [participante] [puntos]`. Los equipos salen de la descripcion del partido (`Boca - River`); se agrupan sin importar tildes ni mayusculas. Algunos nombres distintos se unifican solo en esta tabla (`TEAM_ALIASES` en `backend/src/utils/otherTables.js`): `Estudiantes` = `Estudiantes LP`, `Gimnasia` = `Gimnasia LP`, `Gimnasia (M)` = `Gimnasia Mza` = `Gimnasia M`. Abajo hay un selector de fecha que muestra, para cada partido, que predijo el mejor participante de cada uno de los dos equipos.
+
+Reglas de las rachas: se recorren los partidos en orden (fecha por fecha, partido por partido) de los torneos que jugo cada participante. Un 9-9 o no mandar prode corta la racha; los partidos sin resultado cargado (o anulados con 9-9) se saltean.
+
+La API: `GET /api/other-tables` devuelve `{ sinPlenos, plenosSeguidos, simplesSeguidos, puntosEnUnaFecha, puntosPorEquipo, puntosPorEquipoFechas }`.
+
 ### Puntuacion
 
 - **Pleno (resultado exacto)**: 3 puntos
@@ -169,6 +250,19 @@ Util para tener el mismo fixture con diferentes grupos de amigos.
 - **Error**: 0 puntos
 
 Desempate: plenos > goles totales predichos
+
+### En Vivo (ESPN, Liga Profesional `arg.1`)
+
+1. Admin → entrar a la fecha del torneo principal (no a un suscrito) → **Vincular ESPN**.
+2. Elegir los dias de la fecha → **Buscar partidos ESPN** → **Auto-vincular** → corregir los marcados "⚠ revisar" → **Guardar vinculos**. Se copia a los torneos suscritos (Series B–D).
+   Si el auto-vincular falla siempre con un equipo, agregar el alias en `TEAM_ALIASES` de `frontend/src/pages/EspnLinker.jsx`.
+3. Sitio publico → **En Vivo** (`/en-vivo`) → elegir categoria. Se actualiza solo cada 60s y muestra la ultima fecha creada del torneo.
+
+Reglas:
+- El backend consulta ESPN cada 60s (setInterval dentro del proceso, sin Redis), solo para dias con partidos vinculados sin resultado que esten en juego o por empezar.
+- El resultado final **no se guarda automaticamente**. Mientras un partido no tenga resultado cargado, los puntos usan el marcador de ESPN (en vivo o final). Al cargar el resultado real, ese manda siempre.
+- Partidos sin vincular solo suman cuando se carga el resultado a mano.
+- Logs con prefijo `[LIVE]`, `[ESPN]`, `[LIVE-ROUTE]`, `[ESPN-ROUTE]` en `pm2 logs tablador-backend`.
 
 ## Comandos utiles
 
@@ -196,7 +290,7 @@ Lee el archivo `mappings.txt` en la raiz del proyecto y carga los mapeos. Format
 
 ### Debug del parser
 
-Ir a `/debug` en el frontend para probar el parser de WhatsApp sin guardar datos.
+Ir a `/debug` en el frontend para probar el parser de WhatsApp sin guardar datos. El selector **Parser** permite elegir entre el formato WhatsApp y el de WP Web.
 
 ## Notas
 

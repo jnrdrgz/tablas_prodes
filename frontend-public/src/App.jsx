@@ -3,12 +3,14 @@ import Tournaments from './pages/Tournaments'
 import Gameweek from './pages/Gameweek'
 import GeneralTable from './pages/GeneralTable'
 import PositionEvolution from './pages/PositionEvolution'
+import LivePicker from './pages/LivePicker'
+import LiveTournament from './pages/LiveTournament'
 
 function App() {
   return (
     <div className="min-h-screen">
       <nav className="bg-brand-950 border-b border-brand-900 p-4 mb-4">
-        <div className="container mx-auto flex items-center gap-4">
+        <div className="container mx-auto flex flex-wrap items-center gap-4">
           <Link to="/" className="flex items-center gap-3">
             <img src="/logo_cmn.png" alt="Conmigliazzo" className="h-10 w-10 invert" />
             <span className="text-xl font-bold text-red-400 hover:text-red-300 font-bebas tracking-wider">
@@ -18,6 +20,13 @@ function App() {
           <Link to="/general" className="text-gray-300 hover:text-white">
             Tabla General Temporada
           </Link>
+          <Link to="/historica" className="text-gray-300 hover:text-white">
+            Tabla Historica
+          </Link>
+          <Link to="/en-vivo" className="text-gray-300 hover:text-white flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-brand-600 animate-pulse"></span>
+            En Vivo
+          </Link>
         </div>
       </nav>
       <main className="container mx-auto px-4">
@@ -26,7 +35,10 @@ function App() {
           <Route path="/tournament/:id" element={<Tournaments />} />
           <Route path="/gameweek/:id" element={<Gameweek />} />
           <Route path="/general" element={<GeneralTable />} />
+          <Route path="/historica" element={<GeneralTable historic />} />
           <Route path="/tournament/:id/evolution" element={<PositionEvolution />} />
+          <Route path="/en-vivo" element={<LivePicker />} />
+          <Route path="/en-vivo/:id" element={<LiveTournament />} />
         </Routes>
       </main>
     </div>
